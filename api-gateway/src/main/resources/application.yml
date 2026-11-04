@@ -1,0 +1,43 @@
+# API gateway: the only port the frontend talks to (http://localhost:8080/api/**).
+# Paths are forwarded unchanged; every service also uses the /api context path.
+# /api/internal/** is deliberately not routed: those endpoints are service-to-service only.
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: user-service
+          uri: ${USER_SERVICE_URI:http://localhost:8081}
+          predicates:
+            - Path=/api/auth/**,/api/users/**,/api/addresses/**,/api/employees/**,/api/contact/**,/api/contact
+        - id: catalog-service
+          uri: ${CATALOG_SERVICE_URI:http://localhost:8082}
+          predicates:
+            - Path=/api/products/**,/api/products,/api/categories/**,/api/categories
+        - id: order-service
+          uri: ${ORDER_SERVICE_URI:http://localhost:8083}
+          predicates:
+            - Path=/api/cart/**,/api/cart,/api/coupons/**,/api/coupons,/api/orders/**
+        - id: payment-service
+          uri: ${PAYMENT_SERVICE_URI:http://localhost:8084}
+          predicates:
+            - Path=/api/payments/**
+      # CORS is handled here once (the services don't add CORS headers)
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - http://localhost:4200
+              - http://127.0.0.1:4200
+              - http://localhost:4000
+              - http://127.0.0.1:4000
+            allowedMethods: [GET, POST, PUT, DELETE, OPTIONS, PATCH]
+            allowedHeaders: "*"
+            exposedHeaders: [Authorization]
+            allowCredentials: true
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
