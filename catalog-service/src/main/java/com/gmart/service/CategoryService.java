@@ -1,5 +1,6 @@
 package com.gmart.service;
 
+import com.gmart.web.BusinessException;
 import com.gmart.config.CacheConfig;
 import com.gmart.entity.Category;
 import com.gmart.repository.CategoryRepository;
@@ -24,7 +25,7 @@ public class CategoryService {
     @Cacheable(CacheConfig.CATEGORY_BY_ID)
     public Category getCategoryById(Integer id) {
         return categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found with ID: " + id));
+                .orElseThrow(() -> new BusinessException("Category not found with ID: " + id));
     }
 
     @CacheEvict(cacheNames = {CacheConfig.CATEGORIES, CacheConfig.CATEGORY_BY_ID}, allEntries = true)

@@ -2,12 +2,13 @@ package com.gmart.dto;
 
 import com.gmart.entity.CartItem;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public class CartSummaryDto {
 
     private List<CartItem> items;
-    private float grandTotal;   // amount to pay (kept for older clients)
+    private BigDecimal grandTotal;   // amount to pay (kept for older clients)
     private int totalItems;
     private BillDetails bill;
 
@@ -23,8 +24,8 @@ public class CartSummaryDto {
 
     public List<CartItem> getItems() { return items; }
     public void setItems(List<CartItem> items) { this.items = items; }
-    public float getGrandTotal() { return grandTotal; }
-    public void setGrandTotal(float grandTotal) { this.grandTotal = grandTotal; }
+    public BigDecimal getGrandTotal() { return grandTotal; }
+    public void setGrandTotal(BigDecimal grandTotal) { this.grandTotal = grandTotal; }
     public int getTotalItems() { return totalItems; }
     public void setTotalItems(int totalItems) { this.totalItems = totalItems; }
     public BillDetails getBill() { return bill; }

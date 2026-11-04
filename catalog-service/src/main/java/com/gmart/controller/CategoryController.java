@@ -1,5 +1,6 @@
 package com.gmart.controller;
 
+import com.gmart.web.Errors;
 import com.gmart.dto.ApiResponse;
 import com.gmart.entity.Category;
 import com.gmart.service.CategoryService;
@@ -38,7 +39,7 @@ public class CategoryController {
             Category created = categoryService.createCategory(category);
             return ResponseEntity.ok(ApiResponse.success("Category created successfully", created));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 
@@ -48,7 +49,7 @@ public class CategoryController {
             Category updated = categoryService.updateCategory(id, category);
             return ResponseEntity.ok(ApiResponse.success("Category updated successfully", updated));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 
@@ -58,7 +59,7 @@ public class CategoryController {
             categoryService.deleteCategory(id);
             return ResponseEntity.ok(ApiResponse.success("Category deleted successfully"));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 }

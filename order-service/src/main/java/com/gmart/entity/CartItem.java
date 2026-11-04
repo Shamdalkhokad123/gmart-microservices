@@ -2,6 +2,8 @@ package com.gmart.entity;
 
 import jakarta.persistence.*;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "cart_items")
 public class CartItem {
@@ -12,8 +14,10 @@ public class CartItem {
 
     private Integer productId;
     private Integer quantity;
-    private float price;
-    private Float mrp;
+    @Column(precision = 10, scale = 2)
+    private BigDecimal price;
+    @Column(precision = 10, scale = 2)
+    private BigDecimal mrp;
     private String unit;
     private String productName;
     private String userName;
@@ -35,10 +39,10 @@ public class CartItem {
     public void setProductId(Integer productId) { this.productId = productId; }
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
-    public float getPrice() { return price; }
-    public void setPrice(float price) { this.price = price; }
-    public Float getMrp() { return mrp; }
-    public void setMrp(Float mrp) { this.mrp = mrp; }
+    public BigDecimal getPrice() { return price; }
+    public void setPrice(BigDecimal price) { this.price = price; }
+    public BigDecimal getMrp() { return mrp; }
+    public void setMrp(BigDecimal mrp) { this.mrp = mrp; }
     public String getUnit() { return unit; }
     public void setUnit(String unit) { this.unit = unit; }
     public String getProductName() { return productName; }

@@ -14,7 +14,7 @@ import java.util.Map;
 public class ServiceClients {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Quote(float toPay, String couponCode, boolean couponApplied) {
+    public record Quote(java.math.BigDecimal toPay, String couponCode, boolean couponApplied) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

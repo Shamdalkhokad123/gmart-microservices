@@ -1,5 +1,6 @@
 package com.gmart.controller;
 
+import com.gmart.web.Errors;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.gmart.dto.ApiResponse;
 import com.gmart.dto.PaymentDtos.CreatePaymentRequest;
@@ -32,7 +33,7 @@ public class PaymentController {
             return ResponseEntity.ok(ApiResponse.success("Payment created",
                     paymentService.createPayment(authentication.getName(), request)));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 
@@ -42,7 +43,7 @@ public class PaymentController {
         try {
             return ResponseEntity.ok(ApiResponse.success("Payment", paymentService.getPayment(authentication.getName(), razorpayOrderId)));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 
@@ -54,7 +55,7 @@ public class PaymentController {
             JsonNode order = paymentService.verifyPayment(authentication.getName(), request);
             return ResponseEntity.ok(ApiResponse.success("Payment successful, order placed", order));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 

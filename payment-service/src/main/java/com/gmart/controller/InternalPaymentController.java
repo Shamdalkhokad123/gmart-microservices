@@ -1,5 +1,6 @@
 package com.gmart.controller;
 
+import com.gmart.web.Errors;
 import com.gmart.dto.ApiResponse;
 import com.gmart.service.PaymentService;
 import org.springframework.http.ResponseEntity;
@@ -30,7 +31,7 @@ public class InternalPaymentController {
             String refundId = paymentService.refund(request.razorpayPaymentId(), request.amountPaise());
             return ResponseEntity.ok(ApiResponse.success("Refunded", Map.of("refundId", refundId)));
         } catch (Exception e) {
-            return ResponseEntity.status(502).body(ApiResponse.error("Refund failed: " + e.getMessage()));
+            return ResponseEntity.status(502).body(ApiResponse.error("Refund failed: " + Errors.userMessage(e)));
         }
     }
 }

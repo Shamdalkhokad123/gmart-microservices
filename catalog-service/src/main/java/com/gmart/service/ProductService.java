@@ -1,5 +1,6 @@
 package com.gmart.service;
 
+import com.gmart.web.BusinessException;
 import com.gmart.config.CacheConfig;
 import com.gmart.entity.Product;
 import com.gmart.repository.ProductRepository;
@@ -24,7 +25,7 @@ public class ProductService {
     @Cacheable(CacheConfig.PRODUCT_BY_ID)
     public Product getProductById(Integer id) {
         return productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found with ID: " + id));
+                .orElseThrow(() -> new BusinessException("Product not found with ID: " + id));
     }
 
     @Cacheable(cacheNames = CacheConfig.PRODUCTS_BY_CATEGORY, key = "#category == null ? 'All' : #category.toLowerCase()")

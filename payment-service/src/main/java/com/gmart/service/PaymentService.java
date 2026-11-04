@@ -1,5 +1,6 @@
 package com.gmart.service;
 
+import com.gmart.web.BusinessException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gmart.client.ServiceClients;
@@ -58,18 +59,19 @@ public class PaymentService {
         this.storeName = storeName;
     }
 
-    public static long toPaise(float rupees) {
-        return Math.round(rupees * 100.0);
+    /** Rupees to paise, exactly (Razorpay works in paise). */
+    public static long toPaise(java.math.BigDecimal rupees) {
+        return rupees.movePointRight(2).setScale(0, java.math.RoundingMode.HALF_UP).longValueExact();
     }
 
     public CreatePaymentResponse createPayment(String username, CreatePaymentRequest request) {
         if (!razorpay.isConfigured()) {
-            throw new RuntimeException("Online payment is not set up yet. Please choose cash on delivery.");
+            throw new BusinessException("Online payment is not set up yet. Please choose cash on delivery.");
         }
         Quote quote = services.quote(username, request.couponCode());
         long amountPaise = toPaise(quote.toPay());
         if (amountPaise < 100) {
-            throw new RuntimeException("Online payments must be at least ₹1");
+            throw new BusinessException("Online payments must be at least ₹1");
         }
 
         String receipt = ("gm_" + System.currentTimeMillis() + "_" + username);
@@ -92,7 +94,7 @@ public class PaymentService {
     public Map<String, Object> getPayment(String username, String razorpayOrderId) {
         PaymentTransaction payment = paymentRepository.findByRazorpayOrderId(razorpayOrderId)
                 .filter(p -> p.getUsername().equals(username))
-                .orElseThrow(() -> new RuntimeException("Payment not found"));
+                .orElseThrow(() -> new BusinessException("Payment not found"));
         return Map.of(
                 "checkout", toResponse(payment),
                 "status", payment.getStatus().name(),
@@ -104,10 +106,10 @@ public class PaymentService {
     public JsonNode verifyPayment(String username, VerifyPaymentRequest request) {
         PaymentTransaction payment = paymentRepository.findByRazorpayOrderId(request.razorpayOrderId())
                 .filter(p -> p.getUsername().equals(username))
-                .orElseThrow(() -> new RuntimeException("Payment not found"));
+                .orElseThrow(() -> new BusinessException("Payment not found"));
         if (!razorpay.isValidPaymentSignature(request.razorpayOrderId(), request.razorpayPaymentId(), request.razorpaySignature())) {
             log.warn("Invalid Razorpay signature for order {} (user {})", request.razorpayOrderId(), username);
-            throw new RuntimeException("Payment verification failed");
+            throw new BusinessException("Payment verification failed");
         }
         return completePayment(payment.getRazorpayOrderId(), request.razorpayPaymentId());
     }
@@ -153,12 +155,12 @@ public class PaymentService {
      */
     private JsonNode completePayment(String razorpayOrderId, String razorpayPaymentId) {
         PaymentTransaction payment = paymentRepository.findByRazorpayOrderId(razorpayOrderId)
-                .orElseThrow(() -> new RuntimeException("Payment not found"));
+                .orElseThrow(() -> new BusinessException("Payment not found"));
         if (payment.getStatus() == PaymentTransaction.Status.PAID) {
             return services.getOrder(payment.getOrderId());
         }
         if (payment.getStatus() == PaymentTransaction.Status.REFUNDED) {
-            throw new RuntimeException("This payment was refunded: " + payment.getFailureReason());
+            throw new BusinessException("This payment was refunded: " + payment.getFailureReason());
         }
 
         ensureCaptured(payment, razorpayPaymentId);
@@ -180,8 +182,9 @@ public class PaymentService {
             });
         } catch (RuntimeException e) {
             // Money was captured but the order could not be created: give it back.
-            refundFailedPayment(razorpayOrderId, razorpayPaymentId, e.getMessage());
-            throw new RuntimeException(e.getMessage() + ". Your payment will be refunded to the original payment method.", e);
+            String reason = com.gmart.web.Errors.userMessage(e);
+            refundFailedPayment(razorpayOrderId, razorpayPaymentId, reason);
+            throw new BusinessException(reason + ". Your payment will be refunded to the original payment method.", 409, e);
         }
     }
 
@@ -189,11 +192,11 @@ public class PaymentService {
     private void ensureCaptured(PaymentTransaction payment, String razorpayPaymentId) {
         Map<String, Object> p = razorpay.fetchPayment(razorpayPaymentId);
         if (!Objects.equals(p.get("order_id"), payment.getRazorpayOrderId())) {
-            throw new RuntimeException("Payment does not match this order");
+            throw new BusinessException("Payment does not match this order");
         }
         long paid = ((Number) p.get("amount")).longValue();
         if (paid != payment.getAmountPaise()) {
-            throw new RuntimeException("Paid amount does not match the order amount");
+            throw new BusinessException("Paid amount does not match the order amount");
         }
         String status = String.valueOf(p.get("status"));
         if ("authorized".equals(status)) {
@@ -202,7 +205,7 @@ public class PaymentService {
             status = String.valueOf(p.get("status"));
         }
         if (!"captured".equals(status)) {
-            throw new RuntimeException("Payment was not completed (status: " + status + ")");
+            throw new BusinessException("Payment was not completed (status: " + status + ")");
         }
     }
 

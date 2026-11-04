@@ -1,5 +1,6 @@
 package com.gmart.controller;
 
+import com.gmart.web.Errors;
 import com.gmart.dto.ApiResponse;
 import com.gmart.dto.AuthResponse;
 import com.gmart.dto.LoginRequest;
@@ -25,7 +26,7 @@ public class AuthController {
             AuthResponse response = authService.login(request);
             return ResponseEntity.ok(ApiResponse.success("Login successful", response));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 
@@ -35,7 +36,7 @@ public class AuthController {
             User registeredUser = authService.register(request);
             return ResponseEntity.ok(ApiResponse.success("User registered successfully", registeredUser));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 

@@ -1,5 +1,6 @@
 package com.gmart.service;
 
+import com.gmart.web.BusinessException;
 import com.gmart.client.CatalogClient;
 import com.gmart.client.CatalogClient.ProductInfo;
 import com.gmart.dto.CartSummaryDto;
@@ -82,9 +83,9 @@ public class CartService {
 
     private CartItem findOwnedItem(String username, Integer cartItemId) {
         CartItem item = cartItemRepository.findById(cartItemId)
-                .orElseThrow(() -> new RuntimeException("Cart item not found"));
+                .orElseThrow(() -> new BusinessException("Cart item not found"));
         if (!username.equals(item.getUserName()) || !"NP".equals(item.getPaymentStatus())) {
-            throw new RuntimeException("Cart item not found");
+            throw new BusinessException("Cart item not found");
         }
         return item;
     }
@@ -92,13 +93,13 @@ public class CartService {
     private void checkAvailability(ProductInfo product, int requestedQty) {
         int stock = product.stock() == null ? Integer.MAX_VALUE : product.stock();
         if (stock <= 0) {
-            throw new RuntimeException(product.productName() + " is out of stock");
+            throw new BusinessException(product.productName() + " is out of stock");
         }
         if (requestedQty > MAX_QTY_PER_ITEM) {
-            throw new RuntimeException("You can add up to " + MAX_QTY_PER_ITEM + " units of an item");
+            throw new BusinessException("You can add up to " + MAX_QTY_PER_ITEM + " units of an item");
         }
         if (requestedQty > stock) {
-            throw new RuntimeException("Only " + stock + " left in stock");
+            throw new BusinessException("Only " + stock + " left in stock");
         }
     }
 }

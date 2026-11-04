@@ -1,5 +1,6 @@
 package com.gmart.controller;
 
+import com.gmart.web.Errors;
 import com.gmart.dto.ApiResponse;
 import com.gmart.entity.ContactDetail;
 import com.gmart.service.ContactService;
@@ -22,7 +23,7 @@ public class ContactController {
             ContactDetail saved = contactService.saveContact(contact);
             return ResponseEntity.ok(ApiResponse.success("Thank you! Your message has been received.", saved));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 

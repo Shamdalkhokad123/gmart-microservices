@@ -1,5 +1,6 @@
 package com.gmart.controller;
 
+import com.gmart.web.Errors;
 import com.gmart.dto.ApiResponse;
 import com.gmart.dto.StockLine;
 import com.gmart.entity.Product;
@@ -33,8 +34,8 @@ public class InternalCatalogController {
     public ResponseEntity<ApiResponse<List<Product>>> reserve(@RequestBody List<StockLine> lines) {
         try {
             return ResponseEntity.ok(ApiResponse.success("Reserved", stockService.reserve(lines)));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(409).body(ApiResponse.error(e.getMessage()));
+        } catch (com.gmart.web.BusinessException e) {
+            return ResponseEntity.status(e.getStatus()).body(ApiResponse.error(e.getMessage()));
         }
     }
 

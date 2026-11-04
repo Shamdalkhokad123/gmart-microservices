@@ -1,5 +1,6 @@
 package com.gmart.controller;
 
+import com.gmart.web.Errors;
 import com.gmart.dto.ApiResponse;
 import com.gmart.entity.Product;
 import com.gmart.service.ProductService;
@@ -47,7 +48,7 @@ public class ProductController {
             Product created = productService.createProduct(product);
             return ResponseEntity.ok(ApiResponse.success("Product created successfully", created));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 
@@ -57,7 +58,7 @@ public class ProductController {
             Product updated = productService.updateProduct(id, product);
             return ResponseEntity.ok(ApiResponse.success("Product updated successfully", updated));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 
@@ -67,7 +68,7 @@ public class ProductController {
             productService.deleteProduct(id);
             return ResponseEntity.ok(ApiResponse.success("Product deleted successfully"));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 }

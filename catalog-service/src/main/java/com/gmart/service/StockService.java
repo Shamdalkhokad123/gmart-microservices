@@ -1,6 +1,7 @@
 package com.gmart.service;
 
 import com.gmart.config.CacheConfig;
+import com.gmart.web.BusinessException;
 import com.gmart.dto.StockLine;
 import com.gmart.entity.Product;
 import com.gmart.repository.ProductRepository;
@@ -33,12 +34,12 @@ public class StockService {
         // Lock rows in a fixed order so two concurrent checkouts cannot deadlock
         for (StockLine line : sorted(lines)) {
             Product product = productRepository.lockById(line.productId())
-                    .orElseThrow(() -> new IllegalStateException(name(line) + " is no longer available"));
+                    .orElseThrow(() -> new BusinessException(name(line) + " is no longer available", 409));
             int stock = product.getStock() == null ? Integer.MAX_VALUE : product.getStock();
             if (stock < line.quantity()) {
-                throw new IllegalStateException(stock <= 0
+                throw new BusinessException(stock <= 0
                         ? product.getProductName() + " just went out of stock"
-                        : "Only " + stock + " of " + product.getProductName() + " left");
+                        : "Only " + stock + " of " + product.getProductName() + " left", 409);
             }
             if (product.getStock() != null) {
                 product.setStock(stock - line.quantity());

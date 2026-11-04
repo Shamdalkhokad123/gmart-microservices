@@ -1,5 +1,6 @@
 package com.gmart.controller;
 
+import com.gmart.web.Errors;
 import com.gmart.dto.ApiResponse;
 import com.gmart.dto.BillDetails;
 import com.gmart.dto.CheckoutRequest;
@@ -32,7 +33,7 @@ public class InternalOrderController {
         try {
             return ResponseEntity.ok(ApiResponse.success("Quote", orderService.quote(request.username(), request.couponCode())));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 
@@ -46,7 +47,7 @@ public class InternalOrderController {
                     new OrderService.OnlinePayment(request.razorpayOrderId(), request.razorpayPaymentId(), request.amountPaise()));
             return ResponseEntity.ok(ApiResponse.success("Order placed", order));
         } catch (Exception e) {
-            return ResponseEntity.status(409).body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.status(409).body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 
@@ -55,7 +56,7 @@ public class InternalOrderController {
         try {
             return ResponseEntity.ok(ApiResponse.success("Order", orderService.getOrderForUser(orderId, null, true)));
         } catch (Exception e) {
-            return ResponseEntity.status(404).body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.status(404).body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 }

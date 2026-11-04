@@ -1,5 +1,6 @@
 package com.gmart.service;
 
+import com.gmart.web.BusinessException;
 import com.gmart.client.CatalogClient;
 import com.gmart.client.CatalogClient.ProductInfo;
 import com.gmart.client.CatalogClient.StockLine;
@@ -64,8 +65,9 @@ public class OrderService {
         return promisedMinutes;
     }
 
-    public static long toPaise(float rupees) {
-        return Math.round(rupees * 100.0);
+    /** Rupees to paise, exactly (Razorpay works in paise). */
+    public static long toPaise(java.math.BigDecimal rupees) {
+        return rupees.movePointRight(2).setScale(0, java.math.RoundingMode.HALF_UP).longValueExact();
     }
 
     /** Price the cart exactly as checkout would, without reserving stock. Used to decide how much to charge online. */
@@ -75,11 +77,11 @@ public class OrderService {
         for (CartItem item : cart) {
             ProductInfo p = products.get(item.getProductId());
             if (p == null) {
-                throw new RuntimeException(item.getProductName() + " is no longer available");
+                throw new BusinessException(item.getProductName() + " is no longer available");
             }
             int stock = p.stock() == null ? Integer.MAX_VALUE : p.stock();
             if (stock < item.getQuantity()) {
-                throw new RuntimeException(stock <= 0
+                throw new BusinessException(stock <= 0
                         ? p.productName() + " just went out of stock"
                         : "Only " + stock + " of " + p.productName() + " left");
             }
@@ -128,7 +130,7 @@ public class OrderService {
         // Price it on the server (never trust client totals)
         BillDetails bill = priceCart(cartItems, request.getCouponCode(), username);
         if (payment != null && toPaise(bill.getToPay()) != payment.amountPaise()) {
-            throw new RuntimeException("Your cart changed after the payment was started");
+            throw new BusinessException("Your cart changed after the payment was started");
         }
 
         String itemsSummary = cartItems.stream()
@@ -176,9 +178,9 @@ public class OrderService {
     /** Fetch an order with its items; customers can only see their own. */
     public OrderDetail getOrderForUser(Integer orderId, String username, boolean isAdmin) {
         OrderDetail order = orderDetailRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+                .orElseThrow(() -> new BusinessException("Order not found"));
         if (!isAdmin && !order.getUsername().equals(username)) {
-            throw new RuntimeException("Order not found");
+            throw new BusinessException("Order not found");
         }
         return withItems(order);
     }
@@ -187,7 +189,7 @@ public class OrderService {
         OrderDetail cancelled = tx.execute(status -> {
             OrderDetail order = getOrderForUser(orderId, username, isAdmin);
             if (order.getStatus() == null || !order.getStatus().isCancellable()) {
-                throw new RuntimeException("This order can no longer be cancelled");
+                throw new BusinessException("This order can no longer be cancelled");
             }
             order.setStatus(OrderStatus.CANCELLED);
             order.setCancelledAt(new Date());
@@ -218,7 +220,7 @@ public class OrderService {
     private List<CartItem> loadCart(String username) {
         List<CartItem> cartItems = cartItemRepository.findByUserNameAndPaymentStatus(username, "NP");
         if (cartItems.isEmpty()) {
-            throw new RuntimeException("Your cart is empty");
+            throw new BusinessException("Your cart is empty");
         }
         return cartItems;
     }
@@ -226,7 +228,7 @@ public class OrderService {
     private BillDetails priceCart(List<CartItem> cartItems, String couponCode, String username) {
         BillDetails bill = pricingService.calculate(cartItems, couponCode, username);
         if (couponCode != null && !couponCode.isBlank() && !bill.isCouponApplied()) {
-            throw new RuntimeException(bill.getCouponMessage());
+            throw new BusinessException(bill.getCouponMessage());
         }
         return bill;
     }

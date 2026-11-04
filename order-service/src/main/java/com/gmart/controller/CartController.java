@@ -1,5 +1,6 @@
 package com.gmart.controller;
 
+import com.gmart.web.Errors;
 import com.gmart.dto.ApiResponse;
 import com.gmart.dto.CartSummaryDto;
 import com.gmart.entity.CartItem;
@@ -36,7 +37,7 @@ public class CartController {
             CartItem item = cartService.addToCart(authentication.getName(), productId, quantity);
             return ResponseEntity.ok(ApiResponse.success("Added to cart", item));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 
@@ -48,7 +49,7 @@ public class CartController {
             CartItem updated = cartService.updateCartQuantity(authentication.getName(), cartItemId, quantity);
             return ResponseEntity.ok(ApiResponse.success("Cart updated", updated));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 
@@ -58,7 +59,7 @@ public class CartController {
             cartService.deleteCartItem(authentication.getName(), cartItemId);
             return ResponseEntity.ok(ApiResponse.success("Item removed from cart"));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 

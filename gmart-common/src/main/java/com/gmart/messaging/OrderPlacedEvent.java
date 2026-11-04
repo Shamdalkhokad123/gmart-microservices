@@ -6,7 +6,7 @@ import java.util.Date;
 public record OrderPlacedEvent(
         Integer orderId,
         String username,
-        float totalAmount,
+        java.math.BigDecimal totalAmount,
         String paymentMode,
         String shippingAddr,
         String itemsSummary,

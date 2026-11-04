@@ -1,5 +1,6 @@
 package com.gmart.service;
 
+import com.gmart.web.BusinessException;
 import com.gmart.entity.Employee;
 import com.gmart.repository.EmployeeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,12 +24,12 @@ public class EmployeeService {
 
     public Employee getEmployeeById(Integer id) {
         return employeeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Employee not found with ID: " + id));
+                .orElseThrow(() -> new BusinessException("Employee not found with ID: " + id));
     }
 
     public Employee addEmployee(Employee employee) {
         if (employeeRepository.findByEmail(employee.getEmail()).isPresent()) {
-            throw new RuntimeException("Employee with email " + employee.getEmail() + " already exists");
+            throw new BusinessException("Employee with email " + employee.getEmail() + " already exists");
         }
         // Never store staff passwords in plain text
         if (employee.getPassWord() != null && !employee.getPassWord().isBlank()) {

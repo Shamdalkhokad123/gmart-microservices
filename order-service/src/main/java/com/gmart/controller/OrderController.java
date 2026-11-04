@@ -1,5 +1,6 @@
 package com.gmart.controller;
 
+import com.gmart.web.Errors;
 import com.gmart.dto.ApiResponse;
 import com.gmart.dto.CheckoutRequest;
 import com.gmart.entity.OrderDetail;
@@ -42,8 +43,8 @@ public class OrderController {
         try {
             OrderDetail order = statusService.advance(orderId, update.status(), update.deliveryPartnerName(), update.deliveryPartnerPhone());
             return ResponseEntity.ok(ApiResponse.success("Order updated", order));
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        } catch (com.gmart.web.BusinessException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 
@@ -58,7 +59,7 @@ public class OrderController {
             OrderDetail order = orderService.checkout(authentication.getName(), request);
             return ResponseEntity.ok(ApiResponse.success("Order placed successfully", order));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 
@@ -73,7 +74,7 @@ public class OrderController {
             OrderDetail order = orderService.getOrderForUser(orderId, authentication.getName(), isAdmin(authentication));
             return ResponseEntity.ok(ApiResponse.success("Order retrieved", order));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 
@@ -83,7 +84,7 @@ public class OrderController {
             OrderDetail order = orderService.cancelOrder(orderId, authentication.getName(), isAdmin(authentication));
             return ResponseEntity.ok(ApiResponse.success("Order cancelled", order));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 

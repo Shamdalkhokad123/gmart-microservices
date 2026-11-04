@@ -3,6 +3,7 @@ package com.gmart.service;
 import com.gmart.entity.OrderDetail;
 import com.gmart.entity.OrderStatus;
 import com.gmart.messaging.OrderEvents;
+import com.gmart.web.BusinessException;
 import com.gmart.repository.CartItemRepository;
 import com.gmart.repository.OrderDetailRepository;
 import org.slf4j.Logger;
@@ -53,13 +54,13 @@ public class OrderStatusService {
     @Transactional
     public OrderDetail advance(Integer orderId, OrderStatus next, String riderName, String riderPhone) {
         OrderDetail order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+                .orElseThrow(() -> new BusinessException("Order not found", 404));
         OrderStatus current = order.getStatus() == null ? OrderStatus.PLACED : order.getStatus();
         if (current == next) {
             return withItems(order); // already there (double click, retry)
         }
         if (NEXT.get(current) != next) {
-            throw new IllegalStateException("Order #" + orderId + " is " + current + " and cannot move to " + next);
+            throw new BusinessException("Order #" + orderId + " is " + current + " and cannot move to " + next);
         }
 
         Date now = new Date();
@@ -69,7 +70,7 @@ public class OrderStatusService {
             case PACKED -> order.setPackedAt(now);
             case OUT_FOR_DELIVERY -> {
                 if (isBlank(riderName) || isBlank(riderPhone)) {
-                    throw new IllegalArgumentException("Delivery partner name and phone are required");
+                    throw new BusinessException("Delivery partner name and phone are required");
                 }
                 order.setDeliveryPartnerName(riderName.trim());
                 order.setDeliveryPartnerPhone(riderPhone.trim());

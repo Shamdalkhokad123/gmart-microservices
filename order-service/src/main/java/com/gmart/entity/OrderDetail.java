@@ -2,6 +2,7 @@ package com.gmart.entity;
 
 import jakarta.persistence.*;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -16,15 +17,16 @@ public class OrderDetail {
 
     private Integer cartItemId;
 
-    /** Amount the customer pays (item total + fees - discount). */
-    private float totalAmount;
+    /** Amount the customer pays (item total + fees - discount), in rupees. */
+    @Column(precision = 10, scale = 2, nullable = false)
+    private BigDecimal totalAmount;
 
     // --- Bill breakdown ---
-    private Float itemTotal;
-    private Float mrpTotal;
-    private Float deliveryFee;
-    private Float handlingFee;
-    private Float discount;
+    @Column(precision = 10, scale = 2) private BigDecimal itemTotal;
+    @Column(precision = 10, scale = 2) private BigDecimal mrpTotal;
+    @Column(precision = 10, scale = 2) private BigDecimal deliveryFee;
+    @Column(precision = 10, scale = 2) private BigDecimal handlingFee;
+    @Column(precision = 10, scale = 2) private BigDecimal discount;
     private String couponCode;
 
     private String username;
@@ -76,18 +78,18 @@ public class OrderDetail {
     public void setOrderId(Integer orderId) { this.orderId = orderId; }
     public Integer getCartItemId() { return cartItemId; }
     public void setCartItemId(Integer cartItemId) { this.cartItemId = cartItemId; }
-    public float getTotalAmount() { return totalAmount; }
-    public void setTotalAmount(float totalAmount) { this.totalAmount = totalAmount; }
-    public Float getItemTotal() { return itemTotal; }
-    public void setItemTotal(Float itemTotal) { this.itemTotal = itemTotal; }
-    public Float getMrpTotal() { return mrpTotal; }
-    public void setMrpTotal(Float mrpTotal) { this.mrpTotal = mrpTotal; }
-    public Float getDeliveryFee() { return deliveryFee; }
-    public void setDeliveryFee(Float deliveryFee) { this.deliveryFee = deliveryFee; }
-    public Float getHandlingFee() { return handlingFee; }
-    public void setHandlingFee(Float handlingFee) { this.handlingFee = handlingFee; }
-    public Float getDiscount() { return discount; }
-    public void setDiscount(Float discount) { this.discount = discount; }
+    public BigDecimal getTotalAmount() { return totalAmount; }
+    public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
+    public BigDecimal getItemTotal() { return itemTotal; }
+    public void setItemTotal(BigDecimal itemTotal) { this.itemTotal = itemTotal; }
+    public BigDecimal getMrpTotal() { return mrpTotal; }
+    public void setMrpTotal(BigDecimal mrpTotal) { this.mrpTotal = mrpTotal; }
+    public BigDecimal getDeliveryFee() { return deliveryFee; }
+    public void setDeliveryFee(BigDecimal deliveryFee) { this.deliveryFee = deliveryFee; }
+    public BigDecimal getHandlingFee() { return handlingFee; }
+    public void setHandlingFee(BigDecimal handlingFee) { this.handlingFee = handlingFee; }
+    public BigDecimal getDiscount() { return discount; }
+    public void setDiscount(BigDecimal discount) { this.discount = discount; }
     public String getCouponCode() { return couponCode; }
     public void setCouponCode(String couponCode) { this.couponCode = couponCode; }
     public String getUsername() { return username; }

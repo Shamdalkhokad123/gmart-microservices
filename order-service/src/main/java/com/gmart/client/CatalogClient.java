@@ -1,5 +1,6 @@
 package com.gmart.client;
 
+import com.gmart.web.BusinessException;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -20,7 +21,7 @@ public class CatalogClient {
     private static final ParameterizedTypeReference<List<ProductInfo>> PRODUCTS = new ParameterizedTypeReference<>() {};
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record ProductInfo(Integer productId, String productName, float price, Float mrp,
+    public record ProductInfo(Integer productId, String productName, java.math.BigDecimal price, java.math.BigDecimal mrp,
                               String unit, Integer stock, String imageUrl) {
     }
 
@@ -44,7 +45,7 @@ public class CatalogClient {
 
     public ProductInfo product(Integer id) {
         return products(List.of(id)).stream().findFirst()
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() -> new BusinessException("Product not found"));
     }
 
     /** All-or-nothing; throws with the customer-facing reason when something ran out. */

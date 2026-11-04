@@ -126,9 +126,10 @@ public class RazorpayClient {
         return MessageDigest.isEqual(a.getBytes(StandardCharsets.UTF_8), b.getBytes(StandardCharsets.UTF_8));
     }
 
-    public static class PaymentGatewayException extends RuntimeException {
+    /** Customer-safe message; the gateway's raw response is only logged. */
+    public static class PaymentGatewayException extends com.gmart.web.BusinessException {
         public PaymentGatewayException(String message, Throwable cause) {
-            super(message, cause);
+            super(message, 502, cause);
         }
     }
 }

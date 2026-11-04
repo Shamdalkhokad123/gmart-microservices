@@ -1,5 +1,6 @@
 package com.gmart.service;
 
+import com.gmart.web.BusinessException;
 import com.gmart.dto.AuthResponse;
 import com.gmart.dto.LoginRequest;
 import com.gmart.dto.RegisterRequest;
@@ -44,13 +45,13 @@ public class AuthService {
         }
 
         if (userOpt.isEmpty()) {
-            throw new RuntimeException("Invalid Login ID or Password");
+            throw new BusinessException("Invalid Login ID or Password");
         }
 
         User user = userOpt.get();
 
         if (!passwordMatches(user, password)) {
-            throw new RuntimeException("Invalid Login ID or Password");
+            throw new BusinessException("Invalid Login ID or Password");
         }
 
         String token = jwtTokenProvider.generateToken(user.getUsername(), user.getRole());
@@ -84,10 +85,10 @@ public class AuthService {
 
     public User register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Username already exists");
+            throw new BusinessException("Username already exists");
         }
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already registered");
+            throw new BusinessException("Email already registered");
         }
 
         User user = new User();
@@ -104,6 +105,6 @@ public class AuthService {
 
     public User getCurrentUser(String username) {
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found: " + username));
+                .orElseThrow(() -> new BusinessException("User not found: " + username));
     }
 }

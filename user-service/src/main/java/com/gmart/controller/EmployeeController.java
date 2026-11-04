@@ -1,5 +1,6 @@
 package com.gmart.controller;
 
+import com.gmart.web.Errors;
 import com.gmart.dto.ApiResponse;
 import com.gmart.entity.Employee;
 import com.gmart.service.EmployeeService;
@@ -38,7 +39,7 @@ public class EmployeeController {
             Employee created = employeeService.addEmployee(employee);
             return ResponseEntity.ok(ApiResponse.success("Employee registered successfully", created));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 
@@ -48,7 +49,7 @@ public class EmployeeController {
             employeeService.deleteEmployee(id);
             return ResponseEntity.ok(ApiResponse.success("Employee deleted successfully"));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 }

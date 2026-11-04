@@ -2,6 +2,8 @@ package com.gmart.entity;
 
 import jakarta.persistence.*;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "products")
 public class Product {
@@ -19,12 +21,13 @@ public class Product {
     @Column(nullable = false)
     private String productCategory;
 
-    /** Selling price. */
-    @Column(nullable = false)
-    private float price;
+    /** Selling price, in rupees (exact to the paisa). */
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal price;
 
     /** Maximum retail price (shown struck-through when higher than price). */
-    private Float mrp;
+    @Column(precision = 10, scale = 2)
+    private BigDecimal mrp;
 
     /** Pack size shown to customers, e.g. "1 kg", "500 ml", "Pack of 6". */
     private String unit;
@@ -37,7 +40,7 @@ public class Product {
     public Product() {
     }
 
-    public Product(Integer productId, String productName, String productDesc, String productCategory, float price, String imageUrl) {
+    public Product(Integer productId, String productName, String productDesc, String productCategory, BigDecimal price, String imageUrl) {
         this.productId = productId;
         this.productName = productName;
         this.productDesc = productDesc;
@@ -46,9 +49,10 @@ public class Product {
         this.imageUrl = imageUrl;
     }
 
-    public Product(String productName, String productDesc, String productCategory, float price, Float mrp, String unit, Integer stock, String imageUrl) {
-        this(null, productName, productDesc, productCategory, price, imageUrl);
-        this.mrp = mrp;
+    /** Convenience for seed data: whole-rupee prices. */
+    public Product(String productName, String productDesc, String productCategory, int price, Float mrp, String unit, Integer stock, String imageUrl) {
+        this(null, productName, productDesc, productCategory, BigDecimal.valueOf(price), imageUrl);
+        this.mrp = mrp == null ? null : new BigDecimal(Float.toString(mrp));
         this.unit = unit;
         this.stock = stock;
     }
@@ -61,10 +65,10 @@ public class Product {
     public void setProductDesc(String productDesc) { this.productDesc = productDesc; }
     public String getProductCategory() { return productCategory; }
     public void setProductCategory(String productCategory) { this.productCategory = productCategory; }
-    public float getPrice() { return price; }
-    public void setPrice(float price) { this.price = price; }
-    public Float getMrp() { return mrp; }
-    public void setMrp(Float mrp) { this.mrp = mrp; }
+    public BigDecimal getPrice() { return price; }
+    public void setPrice(BigDecimal price) { this.price = price; }
+    public BigDecimal getMrp() { return mrp; }
+    public void setMrp(BigDecimal mrp) { this.mrp = mrp; }
     public String getUnit() { return unit; }
     public void setUnit(String unit) { this.unit = unit; }
     public Integer getStock() { return stock; }
