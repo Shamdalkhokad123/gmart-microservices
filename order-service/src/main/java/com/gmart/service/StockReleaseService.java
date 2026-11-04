@@ -34,10 +34,15 @@ public class StockReleaseService {
     private final CatalogClient catalog;
     private final ObjectMapper objectMapper;
 
-    public StockReleaseService(PendingStockReleaseRepository repository, CatalogClient catalog, ObjectMapper objectMapper) {
+    public StockReleaseService(PendingStockReleaseRepository repository, CatalogClient catalog, ObjectMapper objectMapper,
+                               io.micrometer.core.instrument.MeterRegistry meters) {
         this.repository = repository;
         this.catalog = catalog;
         this.objectMapper = objectMapper;
+        // Alert if this stays above 0: stock is not getting back to the catalogue
+        io.micrometer.core.instrument.Gauge.builder("gmart.stock_releases.pending", repository, r -> r.count())
+                .description("Stock releases waiting to be confirmed by catalog-service")
+                .register(meters);
     }
 
     /**

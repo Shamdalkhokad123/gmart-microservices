@@ -38,4 +38,21 @@ spring:
             exposedHeaders: [Authorization]
             allowCredentials: true
       default-filters:
-        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials X-Request-Id, RETAIN_UNIQUE
+
+# Health and metrics on the gateway's own port (nginx only forwards /api/** and the site)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: api-gateway
+logging:
+  pattern:
+    level: "%5p [%X{requestId:-}]"

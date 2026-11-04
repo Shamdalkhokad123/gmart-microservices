@@ -44,12 +44,20 @@ public class PaymentService {
     private final TransactionTemplate tx;
     private final String currency;
     private final String storeName;
+    private final io.micrometer.core.instrument.MeterRegistry meters;
 
     public PaymentService(RazorpayClient razorpay, PaymentTransactionRepository paymentRepository,
                           ServiceClients services, ObjectMapper objectMapper,
                           PlatformTransactionManager transactionManager,
                           @Value("${razorpay.currency:INR}") String currency,
-                          @Value("${razorpay.store-name:GMart}") String storeName) {
+                          @Value("${razorpay.store-name:GMart}") String storeName,
+                          io.micrometer.core.instrument.MeterRegistry meters) {
+        this.meters = meters;
+        // Alert if above 0: a customer is owed money that Razorpay hasn't returned yet
+        io.micrometer.core.instrument.Gauge.builder("gmart.payments.refund_pending", paymentRepository,
+                        r -> r.countByStatus(PaymentTransaction.Status.REFUND_PENDING))
+                .description("Payments whose refund is failing and being retried")
+                .register(meters);
         this.razorpay = razorpay;
         this.paymentRepository = paymentRepository;
         this.services = services;
@@ -236,6 +244,7 @@ public class PaymentService {
                         locked.getCouponCode(), razorpayOrderId, razorpayPaymentId, locked.getAmountPaise()));
 
                 locked.setStatus(PaymentTransaction.Status.PAID);
+                meters.counter("gmart.payments", "outcome", "paid").increment();
                 locked.setRazorpayPaymentId(razorpayPaymentId);
                 locked.setOrderId(order.path("orderId").asInt());
                 paymentRepository.save(locked);
@@ -278,11 +287,13 @@ public class PaymentService {
         try {
             razorpay.refund(razorpayPaymentId, payment.getAmountPaise());
             payment.setStatus(PaymentTransaction.Status.REFUNDED);
+            meters.counter("gmart.payments", "outcome", "refunded_order_failed").increment();
             log.warn("Refunded payment {} for {}: {}", razorpayPaymentId, razorpayOrderId, reason);
         } catch (RuntimeException refundError) {
             // PaymentReconciler retries it; it also shows on the admin Payments page
             payment.setStatus(PaymentTransaction.Status.REFUND_PENDING);
             payment.setRefundAttempts(1);
+            meters.counter("gmart.payments", "outcome", "refund_failed").increment();
             log.error("REFUND FAILED for payment {} ({}), will retry. Order failed because: {}", razorpayPaymentId, razorpayOrderId, reason, refundError);
         }
         payment.setRazorpayPaymentId(razorpayPaymentId);

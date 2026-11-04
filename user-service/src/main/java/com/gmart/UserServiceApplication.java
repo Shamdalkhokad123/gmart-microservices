@@ -5,6 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /** Customers, login (issues JWTs), delivery addresses, employees and contact messages. Port 8081. */
 @SpringBootApplication
+@org.springframework.scheduling.annotation.EnableScheduling
 public class UserServiceApplication {
     public static void main(String[] args) {
         SpringApplication.run(UserServiceApplication.class, args);

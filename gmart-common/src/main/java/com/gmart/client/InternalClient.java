@@ -34,6 +34,14 @@ public class InternalClient {
                 .baseUrl(baseUrl)
                 .requestFactory(factory)
                 .defaultHeader(InternalApiFilter.HEADER, internalToken)
+                // carry the customer's request id into the other service's logs
+                .requestInterceptor((request, body, execution) -> {
+                    String requestId = org.slf4j.MDC.get(com.gmart.web.RequestIdFilter.MDC_KEY);
+                    if (requestId != null) {
+                        request.getHeaders().set(com.gmart.web.RequestIdFilter.HEADER, requestId);
+                    }
+                    return execution.execute(request, body);
+                })
                 .build();
     }
 

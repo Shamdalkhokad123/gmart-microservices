@@ -17,6 +17,8 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
 
     Optional<PaymentTransaction> findByRazorpayOrderId(String razorpayOrderId);
 
+    long countByStatus(PaymentTransaction.Status status);
+
     /** Payments still waiting, old enough that the browser/webhook should have finished them. */
     List<PaymentTransaction> findTop100ByStatusAndCreatedAtBeforeOrderByCreatedAtAsc(PaymentTransaction.Status status, Date before);
 

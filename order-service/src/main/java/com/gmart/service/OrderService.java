@@ -46,14 +46,16 @@ public class OrderService {
     private final TransactionTemplate tx;
     private final int promisedMinutes;
     private final StockReleaseService stockReleases;
+    private final io.micrometer.core.instrument.MeterRegistry meters;
 
     public OrderService(OrderDetailRepository orderDetailRepository, CartItemRepository cartItemRepository,
                         PricingService pricingService, ApplicationEventPublisher eventPublisher,
                         CatalogClient catalog, PaymentClient payments, PlatformTransactionManager transactionManager,
-                        StockReleaseService stockReleases,
+                        StockReleaseService stockReleases, io.micrometer.core.instrument.MeterRegistry meters,
                         @Value("${gmart.delivery.promised-minutes:30}") int promisedMinutes) {
         this.promisedMinutes = promisedMinutes;
         this.stockReleases = stockReleases;
+        this.meters = meters;
         this.orderDetailRepository = orderDetailRepository;
         this.cartItemRepository = cartItemRepository;
         this.pricingService = pricingService;
@@ -176,6 +178,7 @@ public class OrderService {
 
         // Sent to Kafka after commit; the store confirms it from there
         eventPublisher.publishEvent(OrderEvents.placed(saved));
+        meters.counter("gmart.orders.placed", "payment", String.valueOf(request.getTrans())).increment();
         return saved;
     }
 
@@ -210,6 +213,7 @@ public class OrderService {
             return order;
         });
         stockReleases.sendNow(releaseId[0]);
+        meters.counter("gmart.orders.cancelled", "refunded", String.valueOf("REFUNDED".equals(cancelled.getPaymentStatus()))).increment();
         return cancelled;
     }
 

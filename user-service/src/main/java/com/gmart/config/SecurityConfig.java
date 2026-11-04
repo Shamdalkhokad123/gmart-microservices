@@ -23,7 +23,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http, SecuritySupport support) throws Exception {
         return support.apply(http)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/internal/**", "/error", "/h2-console/**").permitAll()
+                        .requestMatchers("/internal/**", "/error", "/h2-console/**", "/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/auth/login", "/auth/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/contact").permitAll()

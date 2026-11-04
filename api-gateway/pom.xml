@@ -14,6 +14,15 @@
     <description>API Gateway for Gmart</description>
 
     <dependencies>
+        <!-- Health checks (/api/actuator/health) and Prometheus metrics (/api/actuator/prometheus); not routed by the gateway -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-gateway</artifactId>

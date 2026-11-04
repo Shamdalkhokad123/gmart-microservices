@@ -20,19 +20,44 @@ public class AuthController {
     @Autowired
     private AuthService authService;
 
+    @Autowired
+    private com.gmart.web.RateLimiter limiter;
+
+    /** Failed logins allowed per account, and login attempts per IP, in this window. */
+    private static final java.time.Duration LOGIN_WINDOW = java.time.Duration.ofMinutes(15);
+    private static final int MAX_FAILURES_PER_ACCOUNT = 5;
+    private static final int MAX_ATTEMPTS_PER_IP = 30;
+
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request,
+                                                           jakarta.servlet.http.HttpServletRequest http) {
+        String accountKey = "login-fail:" + request.getUsername().trim().toLowerCase(java.util.Locale.ROOT);
+        String ipKey = "login-ip:" + com.gmart.web.RateLimiter.clientIp(http);
+        if (limiter.count(accountKey, LOGIN_WINDOW) >= MAX_FAILURES_PER_ACCOUNT) {
+            return ResponseEntity.status(429).body(ApiResponse.error(
+                    "Too many failed attempts for this account. Please try again in 15 minutes."));
+        }
         try {
+            limiter.acquire(ipKey, MAX_ATTEMPTS_PER_IP, LOGIN_WINDOW, "Too many login attempts. Please try again later.");
             AuthResponse response = authService.login(request);
+            limiter.reset(accountKey);
             return ResponseEntity.ok(ApiResponse.success("Login successful", response));
+        } catch (com.gmart.web.BusinessException e) {
+            if (e.getStatus() != 429) {
+                limiter.record(accountKey);
+            }
+            return ResponseEntity.status(e.getStatus()).body(ApiResponse.error(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<User>> register(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<ApiResponse<User>> register(@Valid @RequestBody RegisterRequest request,
+                                                      jakarta.servlet.http.HttpServletRequest http) {
         try {
+            limiter.acquire("register-ip:" + com.gmart.web.RateLimiter.clientIp(http), 10, java.time.Duration.ofHours(1),
+                    "Too many sign-ups from your network. Please try again later.");
             User registeredUser = authService.register(request);
             return ResponseEntity.ok(ApiResponse.success("User registered successfully", registeredUser));
         } catch (Exception e) {
