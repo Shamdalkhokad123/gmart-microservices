@@ -39,9 +39,13 @@ public class InternalCatalogController {
         }
     }
 
+    /** {@code releaseId} makes retries safe: the same release is only applied once. */
+    public record ReleaseRequest(String releaseId, List<StockLine> lines) {
+    }
+
     @PostMapping("/stock/release")
-    public ResponseEntity<ApiResponse<Void>> release(@RequestBody List<StockLine> lines) {
-        stockService.release(lines);
-        return ResponseEntity.ok(ApiResponse.success("Released"));
+    public ResponseEntity<ApiResponse<Void>> release(@RequestBody ReleaseRequest request) {
+        boolean applied = stockService.release(request.releaseId(), request.lines());
+        return ResponseEntity.ok(ApiResponse.success(applied ? "Released" : "Already released"));
     }
 }

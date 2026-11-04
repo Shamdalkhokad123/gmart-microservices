@@ -45,12 +45,15 @@ public class OrderService {
     private final PaymentClient payments;
     private final TransactionTemplate tx;
     private final int promisedMinutes;
+    private final StockReleaseService stockReleases;
 
     public OrderService(OrderDetailRepository orderDetailRepository, CartItemRepository cartItemRepository,
                         PricingService pricingService, ApplicationEventPublisher eventPublisher,
                         CatalogClient catalog, PaymentClient payments, PlatformTransactionManager transactionManager,
+                        StockReleaseService stockReleases,
                         @Value("${gmart.delivery.promised-minutes:30}") int promisedMinutes) {
         this.promisedMinutes = promisedMinutes;
+        this.stockReleases = stockReleases;
         this.orderDetailRepository = orderDetailRepository;
         this.cartItemRepository = cartItemRepository;
         this.pricingService = pricingService;
@@ -116,7 +119,8 @@ public class OrderService {
         try {
             return tx.execute(status -> placeOrder(username, request, payment, cart, reserved));
         } catch (RuntimeException e) {
-            catalog.releaseQuietly(lines);
+            // Give the reserved stock back (saved first, so it is retried if catalog is down)
+            stockReleases.sendNow(stockReleases.enqueue(null, lines));
             throw e;
         }
     }
@@ -186,6 +190,7 @@ public class OrderService {
     }
 
     public OrderDetail cancelOrder(Integer orderId, String username, boolean isAdmin) {
+        Long[] releaseId = new Long[1];
         OrderDetail cancelled = tx.execute(status -> {
             OrderDetail order = getOrderForUser(orderId, username, isAdmin);
             if (order.getStatus() == null || !order.getStatus().isCancellable()) {
@@ -199,11 +204,12 @@ public class OrderService {
                 order.setPaymentStatus("REFUNDED");
             }
             orderDetailRepository.save(order);
+            // Stock to give back is recorded in the same transaction as the cancellation
+            releaseId[0] = stockReleases.enqueue(order.getOrderId(), toLines(order.getItems()));
             eventPublisher.publishEvent(OrderEvents.status(order));
             return order;
         });
-        // Put the stock back
-        catalog.releaseQuietly(toLines(cancelled.getItems()));
+        stockReleases.sendNow(releaseId[0]);
         return cancelled;
     }
 

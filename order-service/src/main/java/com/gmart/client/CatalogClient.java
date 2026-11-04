@@ -53,13 +53,12 @@ public class CatalogClient {
         return http.post("/internal/stock/reserve", lines, PRODUCTS);
     }
 
-    /** Best-effort: logs instead of failing, because the caller is already handling another outcome. */
-    public void releaseQuietly(List<StockLine> lines) {
-        if (lines.isEmpty()) return;
-        try {
-            http.post("/internal/stock/release", lines, new ParameterizedTypeReference<Void>() {});
-        } catch (RuntimeException e) {
-            log.error("Could not release stock {}: {}", lines, e.getMessage());
-        }
+    /**
+     * Gives stock back. Throws if catalog-service can't be reached; callers go through
+     * StockReleaseService, which retries. Safe to repeat with the same {@code releaseId}.
+     */
+    public void release(String releaseId, List<StockLine> lines) {
+        http.post("/internal/stock/release", java.util.Map.of("releaseId", releaseId, "lines", lines),
+                new ParameterizedTypeReference<Void>() {});
     }
 }

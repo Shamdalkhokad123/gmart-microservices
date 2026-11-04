@@ -4,6 +4,8 @@ import com.gmart.config.CacheConfig;
 import com.gmart.web.BusinessException;
 import com.gmart.dto.StockLine;
 import com.gmart.entity.Product;
+import com.gmart.entity.ProcessedStockRelease;
+import com.gmart.repository.ProcessedStockReleaseRepository;
 import com.gmart.repository.ProductRepository;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
@@ -18,9 +20,11 @@ import java.util.List;
 public class StockService {
 
     private final ProductRepository productRepository;
+    private final ProcessedStockReleaseRepository processedReleases;
 
-    public StockService(ProductRepository productRepository) {
+    public StockService(ProductRepository productRepository, ProcessedStockReleaseRepository processedReleases) {
         this.productRepository = productRepository;
+        this.processedReleases = processedReleases;
     }
 
     /**
@@ -49,10 +53,22 @@ public class StockService {
         return result;
     }
 
-    /** Puts stock back (cancelled order, or a checkout that failed after reserving). */
+    /**
+     * Puts stock back (cancelled order, or a checkout that failed after reserving).
+     * Idempotent per {@code releaseId}: the caller retries until it gets an answer, and a
+     * release that was already applied is not applied again. Returns false for a repeat.
+     */
     @Transactional
     @CacheEvict(cacheNames = {CacheConfig.PRODUCTS, CacheConfig.PRODUCT_BY_ID, CacheConfig.PRODUCTS_BY_CATEGORY}, allEntries = true)
-    public void release(List<StockLine> lines) {
+    public boolean release(String releaseId, List<StockLine> lines) {
+        if (releaseId == null || releaseId.isBlank()) {
+            throw new BusinessException("releaseId is required");
+        }
+        if (processedReleases.existsById(releaseId)) {
+            return false;
+        }
+        // Inserting first takes the primary-key lock, so two concurrent retries can't both apply
+        processedReleases.saveAndFlush(new ProcessedStockRelease(releaseId));
         for (StockLine line : sorted(lines)) {
             productRepository.lockById(line.productId()).ifPresent(p -> {
                 if (p.getStock() != null) {
@@ -60,6 +76,7 @@ public class StockService {
                 }
             });
         }
+        return true;
     }
 
     private static List<StockLine> sorted(List<StockLine> lines) {

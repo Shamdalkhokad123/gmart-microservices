@@ -31,6 +31,7 @@
         <java.version>17</java.version>
         <spring-cloud.version>2023.0.1</spring-cloud.version>
         <jjwt.version>0.11.5</jjwt.version>
+        <shedlock.version>5.16.0</shedlock.version>
     </properties>
 
     <dependencyManagement>
@@ -41,6 +42,16 @@
                 <version>${spring-cloud.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>net.javacrumbs.shedlock</groupId>
+                <artifactId>shedlock-spring</artifactId>
+                <version>${shedlock.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.javacrumbs.shedlock</groupId>
+                <artifactId>shedlock-provider-jdbc-template</artifactId>
+                <version>${shedlock.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.gmart</groupId>

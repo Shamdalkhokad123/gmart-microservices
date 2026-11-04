@@ -131,7 +131,8 @@ public class PaymentService {
             if (paymentId == null || orderId == null) return true;
 
             PaymentTransaction payment = paymentRepository.findByRazorpayOrderId(orderId).orElse(null);
-            if (payment == null || payment.getStatus() != PaymentTransaction.Status.CREATED) {
+            if (payment == null || (payment.getStatus() != PaymentTransaction.Status.CREATED
+                    && payment.getStatus() != PaymentTransaction.Status.EXPIRED)) {
                 return true; // not ours, or already handled
             }
             completePayment(orderId, paymentId);
@@ -140,6 +141,58 @@ public class PaymentService {
             log.error("Webhook handling failed", e);
         }
         return true;
+    }
+
+    /**
+     * Reconciler step for a payment still CREATED after the normal flow should have finished:
+     * asks Razorpay whether the customer actually paid. If so, completes it exactly like the
+     * browser/webhook would (creates the order, or refunds if that fails). Returns what happened.
+     */
+    public String reconcile(String razorpayOrderId, java.time.Duration expireAfter) {
+        PaymentTransaction payment = paymentRepository.findByRazorpayOrderId(razorpayOrderId)
+                .orElseThrow(() -> new BusinessException("Payment not found", 404));
+        if (payment.getStatus() != PaymentTransaction.Status.CREATED) {
+            return "already " + payment.getStatus();
+        }
+        payment.setLastCheckedAt(new java.util.Date());
+        paymentRepository.save(payment);
+
+        String paid = razorpay.fetchOrderPayments(razorpayOrderId).stream()
+                .filter(p -> "captured".equals(p.get("status")) || "authorized".equals(p.get("status")))
+                .map(p -> String.valueOf(p.get("id")))
+                .findFirst().orElse(null);
+        if (paid != null) {
+            try {
+                completePayment(razorpayOrderId, paid);
+                return "completed";
+            } catch (RuntimeException e) {
+                return "refunded: " + e.getMessage();
+            }
+        }
+        if (payment.getCreatedAt() != null
+                && payment.getCreatedAt().toInstant().isBefore(java.time.Instant.now().minus(expireAfter))) {
+            payment.setStatus(PaymentTransaction.Status.EXPIRED);
+            paymentRepository.save(payment);
+            return "expired";
+        }
+        return "not paid yet";
+    }
+
+    /** Reconciler step for REFUND_PENDING: try the refund again. */
+    public boolean retryRefund(PaymentTransaction payment) {
+        try {
+            razorpay.refund(payment.getRazorpayPaymentId(), payment.getAmountPaise());
+            payment.setStatus(PaymentTransaction.Status.REFUNDED);
+            paymentRepository.save(payment);
+            log.info("Pending refund for {} completed after {} attempts", payment.getRazorpayPaymentId(), payment.getRefundAttempts());
+            return true;
+        } catch (RuntimeException e) {
+            payment.setRefundAttempts(payment.getRefundAttempts() + 1);
+            paymentRepository.save(payment);
+            log.error("Refund for payment {} ({}) still failing after {} attempts: {}", payment.getRazorpayPaymentId(),
+                    payment.getRazorpayOrderId(), payment.getRefundAttempts(), e.getMessage());
+            return false;
+        }
     }
 
     /** Full refund requested by order-service when a paid order is cancelled. Returns the refund id. */
@@ -161,6 +214,14 @@ public class PaymentService {
         }
         if (payment.getStatus() == PaymentTransaction.Status.REFUNDED) {
             throw new BusinessException("This payment was refunded: " + payment.getFailureReason());
+        }
+        if (payment.getStatus() == PaymentTransaction.Status.REFUND_PENDING) {
+            throw new BusinessException("This payment is being refunded: " + payment.getFailureReason());
+        }
+        if (payment.getStatus() == PaymentTransaction.Status.EXPIRED) {
+            // The customer paid after we gave up waiting: complete it normally
+            payment.setStatus(PaymentTransaction.Status.CREATED);
+            paymentRepository.save(payment);
         }
 
         ensureCaptured(payment, razorpayPaymentId);
@@ -219,8 +280,10 @@ public class PaymentService {
             payment.setStatus(PaymentTransaction.Status.REFUNDED);
             log.warn("Refunded payment {} for {}: {}", razorpayPaymentId, razorpayOrderId, reason);
         } catch (RuntimeException refundError) {
-            // Needs manual follow-up in the Razorpay dashboard
-            log.error("REFUND FAILED for payment {} ({}). Order failed because: {}", razorpayPaymentId, razorpayOrderId, reason, refundError);
+            // PaymentReconciler retries it; it also shows on the admin Payments page
+            payment.setStatus(PaymentTransaction.Status.REFUND_PENDING);
+            payment.setRefundAttempts(1);
+            log.error("REFUND FAILED for payment {} ({}), will retry. Order failed because: {}", razorpayPaymentId, razorpayOrderId, reason, refundError);
         }
         payment.setRazorpayPaymentId(razorpayPaymentId);
         payment.setFailureReason(reason != null && reason.length() > 500 ? reason.substring(0, 500) : reason);

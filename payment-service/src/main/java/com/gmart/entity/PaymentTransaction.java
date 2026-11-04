@@ -12,7 +12,12 @@ import java.util.Date;
 @Table(name = "payment_transactions", indexes = @Index(name = "ux_pay_rzp_order", columnList = "razorpayOrderId", unique = true))
 public class PaymentTransaction {
 
-    public enum Status { CREATED, PAID, REFUNDED }
+    /**
+     * CREATED: waiting for the customer to pay. PAID: order created. REFUNDED: money returned.
+     * REFUND_PENDING: money must be returned but Razorpay refused or was unreachable (retried).
+     * EXPIRED: the customer never completed the payment.
+     */
+    public enum Status { CREATED, PAID, REFUNDED, REFUND_PENDING, EXPIRED }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -49,6 +54,13 @@ public class PaymentTransaction {
     @Column(length = 500)
     private String failureReason;
 
+    /** Failed refund attempts while REFUND_PENDING. */
+    @Column(nullable = false)
+    private int refundAttempts;
+
+    /** Last time the reconciler asked Razorpay about this payment. */
+    @Temporal(TemporalType.TIMESTAMP) private Date lastCheckedAt;
+
     @Temporal(TemporalType.TIMESTAMP) private Date createdAt;
     @Temporal(TemporalType.TIMESTAMP) private Date updatedAt;
 
@@ -79,6 +91,10 @@ public class PaymentTransaction {
     public void setOrderId(Integer orderId) { this.orderId = orderId; }
     public String getFailureReason() { return failureReason; }
     public void setFailureReason(String failureReason) { this.failureReason = failureReason; }
+    public int getRefundAttempts() { return refundAttempts; }
+    public void setRefundAttempts(int refundAttempts) { this.refundAttempts = refundAttempts; }
+    public Date getLastCheckedAt() { return lastCheckedAt; }
+    public void setLastCheckedAt(Date lastCheckedAt) { this.lastCheckedAt = lastCheckedAt; }
     public Date getCreatedAt() { return createdAt; }
     public Date getUpdatedAt() { return updatedAt; }
 }

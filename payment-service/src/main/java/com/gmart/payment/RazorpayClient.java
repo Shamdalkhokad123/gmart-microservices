@@ -76,6 +76,18 @@ public class RazorpayClient {
         }
     }
 
+    /** GET /orders/{id}/payments: every payment attempt made for a Razorpay order. */
+    @SuppressWarnings("unchecked")
+    public java.util.List<Map<String, Object>> fetchOrderPayments(String razorpayOrderId) {
+        try {
+            Map<String, Object> body = http.get().uri("/orders/{id}/payments", razorpayOrderId).retrieve().body(JSON_MAP);
+            Object items = body == null ? null : body.get("items");
+            return items instanceof java.util.List<?> list ? (java.util.List<Map<String, Object>>) list : java.util.List.of();
+        } catch (RestClientException e) {
+            throw gatewayError("fetch payments of order " + razorpayOrderId, e);
+        }
+    }
+
     /** POST /payments/{id}/capture, for accounts where auto-capture is off. */
     public Map<String, Object> capturePayment(String paymentId, long amountPaise, String currency) {
         return post("/payments/" + paymentId + "/capture", Map.of("amount", amountPaise, "currency", currency));
