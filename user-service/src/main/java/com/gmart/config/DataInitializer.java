@@ -7,14 +7,16 @@ import com.gmart.repository.AddressRepository;
 import com.gmart.repository.EmployeeRepository;
 import com.gmart.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 import java.util.List;
 
-/** Seeds demo users, employees and addresses on first start. */
+/** Seeds demo users, employees and addresses on first start. Development only: enabled by gmart.seed.demo-data=true (the dev profile). */
 @Component
+@ConditionalOnProperty(name = "gmart.seed.demo-data", havingValue = "true")
 public class DataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
@@ -73,6 +75,7 @@ public class DataInitializer implements CommandLineRunner {
                     new Employee(null, "Sarah", "Connor", 9820022334L, "sarah.c@gmart.com", "empPass2", "Customer Relations Desk"),
                     new Employee(null, "David", "Miller", 9820033445L, "david.m@gmart.com", "empPass3", "Logistics & Dispatch Division")
             );
+            employees.forEach(e -> e.setPassWord(passwordEncoder.encode(e.getPassWord())));
             employeeRepository.saveAll(employees);
         }
     }

@@ -32,7 +32,7 @@ public class ServiceClients {
 
     public ServiceClients(@Value("${gmart.services.order-url}") String orderUrl,
                           @Value("${gmart.services.user-url}") String userUrl,
-                          @Value("${gmart.internal.token:gmart-internal-dev-token}") String token,
+                          @Value("${gmart.internal.token}") String token,
                           ObjectMapper objectMapper) {
         this.orders = new InternalClient("Order service", orderUrl, token, objectMapper);
         this.users = new InternalClient("User service", userUrl, token, objectMapper);

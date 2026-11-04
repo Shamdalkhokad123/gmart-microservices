@@ -20,7 +20,7 @@ public class SecuritySupport {
     private final String internalToken;
 
     public SecuritySupport(JwtTokenProvider tokenProvider,
-                           @Value("${gmart.internal.token:gmart-internal-dev-token}") String internalToken) {
+                           @Value("${gmart.internal.token}") String internalToken) {
         this.tokenProvider = tokenProvider;
         this.internalToken = internalToken;
     }

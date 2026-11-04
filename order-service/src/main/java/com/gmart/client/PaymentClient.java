@@ -14,7 +14,7 @@ public class PaymentClient {
     private final InternalClient http;
 
     public PaymentClient(@Value("${gmart.services.payment-url}") String baseUrl,
-                         @Value("${gmart.internal.token:gmart-internal-dev-token}") String token,
+                         @Value("${gmart.internal.token}") String token,
                          ObjectMapper objectMapper) {
         this.http = new InternalClient("Payment service", baseUrl, token, objectMapper);
     }

@@ -30,7 +30,7 @@ public class CatalogClient {
     private final InternalClient http;
 
     public CatalogClient(@Value("${gmart.services.catalog-url}") String baseUrl,
-                         @Value("${gmart.internal.token:gmart-internal-dev-token}") String token,
+                         @Value("${gmart.internal.token}") String token,
                          ObjectMapper objectMapper) {
         this.http = new InternalClient("Catalog service", baseUrl, token, objectMapper);
     }

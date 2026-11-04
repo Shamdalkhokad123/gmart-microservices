@@ -20,7 +20,7 @@ import java.util.Date;
 @Component
 public class JwtTokenProvider {
 
-    @Value("${gmart.app.jwtSecret:GmartSecretKeyForJwtTokenSigningMustBeVeryLongAndSecure2026SuperKey}")
+    @Value("${gmart.app.jwtSecret}")
     private String jwtSecret;
 
     @Value("${gmart.app.jwtExpirationMs:86400000}")

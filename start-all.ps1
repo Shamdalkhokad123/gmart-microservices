@@ -1,7 +1,10 @@
 # Starts the GMart microservices, each in its own PowerShell window.
 #
-#   .\start-all.ps1            # uses Docker MySQL / Redis / Kafka (C:\Users\ksham\dev-services)
-#   .\start-all.ps1 -Offline   # no Docker: in-memory H2 databases, no Redis/Kafka
+#   .\start-all.ps1            # local dev with Docker MySQL / Redis / Kafka (C:\Users\ksham\dev-services)
+#   .\start-all.ps1 -Offline   # local dev without Docker: in-memory H2 databases, no Redis/Kafka
+#
+# Both use the "dev" profile: public development secrets plus demo data
+# (admin / 12345678, john_doe / password123). Never use it in production.
 #
 # Online payments need the Razorpay key secret in this window first:
 #   $env:RAZORPAY_KEY_SECRET = "..."
@@ -20,7 +23,7 @@ if (-not $env:RAZORPAY_KEY_SECRET) {
     Write-Warning "RAZORPAY_KEY_SECRET is not set: 'Pay online' will be unavailable (cash on delivery still works)."
 }
 
-$profileArg = if ($Offline) { "--spring.profiles.active=h2" } else { "" }
+$profileArg = if ($Offline) { "--spring.profiles.active=h2" } else { "--spring.profiles.active=dev" }
 $services = @(
     @{ Name = "user-service";    Port = 8081 },
     @{ Name = "catalog-service"; Port = 8082 },

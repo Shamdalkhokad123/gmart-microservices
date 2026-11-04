@@ -5,12 +5,14 @@ import com.gmart.entity.Product;
 import com.gmart.repository.CategoryRepository;
 import com.gmart.repository.ProductRepository;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/** Seeds the demo catalogue on first start. */
+/** Seeds the demo catalogue on first start. Development only: enabled by gmart.seed.demo-data=true (the dev profile). */
 @Component
+@ConditionalOnProperty(name = "gmart.seed.demo-data", havingValue = "true")
 public class DataInitializer implements CommandLineRunner {
 
     private final CategoryRepository categoryRepository;

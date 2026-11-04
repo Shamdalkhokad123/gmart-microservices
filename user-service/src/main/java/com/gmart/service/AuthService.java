@@ -28,27 +28,7 @@ public class AuthService {
         String usernameOrId = request.getUsername().trim();
         String password = request.getPassword().trim();
 
-        
-        // 1. Check if it's the Admin login (1111 / 12345678 or username "admin")
-        if (("1111".equals(usernameOrId) || "admin".equalsIgnoreCase(usernameOrId)) && "12345678".equals(password)) {
-            // Ensure admin entity exists in DB
-            User admin = userRepository.findByUsername("admin").orElseGet(() -> {
-                User newAdmin = new User();
-                newAdmin.setUsername("admin");
-                newAdmin.setFullName("System Administrator");
-                newAdmin.setEmail("admin@gmart.com");
-                newAdmin.setMobileNo(9999999999L);
-                newAdmin.setPassWord(passwordEncoder.encode("12345678"));
-                newAdmin.setAddress("GMart HQ, Admin Tower");
-                newAdmin.setRole("ROLE_ADMIN");
-                return userRepository.save(newAdmin);
-            });
-
-            String token = jwtTokenProvider.generateToken(admin.getUsername(), "ROLE_ADMIN");
-            return new AuthResponse(token, admin.getCustId(), admin.getUsername(), admin.getFullName(), admin.getEmail(), "ROLE_ADMIN", admin.getAddress());
-        }
-
-        // 2. Customer login
+        // Admins and customers sign in the same way: the account and its stored password decide the role.
         Optional<User> userOpt = Optional.empty();
         try {
             Long custId = Long.parseLong(usernameOrId);
@@ -69,16 +49,38 @@ public class AuthService {
 
         User user = userOpt.get();
 
-        // Support both hashed BCrypt and legacy plain text matches
-        boolean passwordMatches = passwordEncoder.matches(password, user.getPassWord()) || password.equals(user.getPassWord());
-
-        if (!passwordMatches) {
+        if (!passwordMatches(user, password)) {
             throw new RuntimeException("Invalid Login ID or Password");
         }
 
         String token = jwtTokenProvider.generateToken(user.getUsername(), user.getRole());
         return new AuthResponse(token, user.getCustId(), user.getUsername(), user.getFullName(), user.getEmail(), user.getRole(), user.getAddress());
     }
+
+    /**
+     * BCrypt check. Accounts imported from the old JSP app may still hold a plain-text
+     * password: those (and only those) are compared directly once and upgraded to BCrypt,
+     * so a leaked hash can never be used as a password.
+     */
+    private boolean passwordMatches(User user, String password) {
+        String stored = user.getPassWord();
+        if (stored == null || stored.isEmpty()) {
+            return false;
+        }
+        if (BCRYPT.matcher(stored).matches()) {
+            return passwordEncoder.matches(password, stored);
+        }
+        boolean legacyMatch = java.security.MessageDigest.isEqual(
+                stored.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                password.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        if (legacyMatch) {
+            user.setPassWord(passwordEncoder.encode(password));
+            userRepository.save(user);
+        }
+        return legacyMatch;
+    }
+
+    private static final java.util.regex.Pattern BCRYPT = java.util.regex.Pattern.compile("^\\$2[aby]?\\$\\d{2}\\$[./A-Za-z0-9]{53}$");
 
     public User register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {

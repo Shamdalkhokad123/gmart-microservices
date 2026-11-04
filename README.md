@@ -42,31 +42,44 @@ old single backend: `http://localhost:8080/api`.
 
 ## Run
 
-Docker services (MySQL, Redis, Kafka) come from `C:\Users\ksham\dev-services`. Databases are
-created automatically and seeded with the demo users and catalogue on first start.
+### Local development
+
+Local runs use the **`dev` profile**: public development secrets plus demo data
+(the demo catalogue, `john_doe` / `password123` and `admin` / `12345678`). Docker services
+(MySQL, Redis, Kafka) come from `C:\Users\ksham\dev-services`.
 
 ```powershell
 $env:RAZORPAY_KEY_SECRET = "<test key secret>"   # optional: enables "Pay online"
-.\start-all.ps1             # with Docker
-.\start-all.ps1 -Offline    # without Docker (H2 in-memory, data resets on restart)
+.\start-all.ps1             # dev profile, with Docker
+.\start-all.ps1 -Offline    # dev profile, without Docker (H2 in-memory, data resets on restart)
 ```
 
-Or run one service from its folder: `mvn spring-boot:run` (add `-Dspring-boot.run.profiles=h2` for offline).
+Or run one service from its folder: `mvn spring-boot:run -Dspring-boot.run.profiles=dev` (or `h2` for offline).
 
 Stop the old single backend (`DemoGmart/backend`) first: both use port 8080.
 
-Demo logins: `john_doe` / `password123` (customer), `admin` / `12345678` (admin).
+### Production
+
+Run **without** the `dev` or `h2` profile. No demo data is created, and each service refuses
+to start unless `JWT_SECRET` and `INTERNAL_TOKEN` are set to strong values. Values that
+appear in this repository are rejected. The first admin account is created from
+`ADMIN_USERNAME` / `ADMIN_EMAIL` / `ADMIN_PASSWORD` (at least 12 characters) when no
+admin exists yet. Remove `ADMIN_PASSWORD` from the environment after the first start.
+
+Generate secrets with, for example, `openssl rand -hex 32`.
 
 ## Configuration (environment variables)
 
-| Variable | Default | Used by |
-|---|---|---|
-| `JWT_SECRET` | dev value | all (must match) |
-| `INTERNAL_TOKEN` | `gmart-internal-dev-token` | all (must match). Change in any shared environment |
-| `DB_HOST`, `DB_USER`, `DB_PASSWORD` | `localhost`, `root`, `root` | user, catalog, order, payment |
-| `REDIS_HOST` | `localhost` | catalog |
-| `KAFKA_SERVERS` | `localhost:9092` | order |
-| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` | test key id, none, none | payment |
-| `*_SERVICE_URL` / `*_SERVICE_URI` | `http://localhost:808x` | services / gateway |
+| Variable | Production | Dev profile default | Used by |
+|---|---|---|---|
+| `JWT_SECRET` | **required**, 32+ chars, same in all services | public dev value | all |
+| `INTERNAL_TOKEN` | **required**, 24+ chars, same in all services | public dev value | all |
+| `DB_USER`, `DB_PASSWORD` | **required** (use a per-service DB user, not root) | `root` / `root` | user, catalog, order, payment |
+| `DB_HOST` | `localhost` | `localhost` | user, catalog, order, payment |
+| `ADMIN_USERNAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` | first start only | not needed (demo admin) | user |
+| `REDIS_HOST` | `localhost` | `localhost` | catalog |
+| `KAFKA_SERVERS` | `localhost:9092` | `localhost:9092` | order |
+| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` | live keys | test key id, no secret | payment |
+| `*_SERVICE_URL` / `*_SERVICE_URI` | your internal hostnames | `http://localhost:808x` | services / gateway |
 
 Razorpay webhook URL (events `payment.captured`, `order.paid`): `https://<public-host>/api/payments/razorpay/webhook`.
