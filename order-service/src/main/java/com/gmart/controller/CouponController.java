@@ -16,9 +16,11 @@ import java.util.Map;
 public class CouponController {
 
     private final PricingService pricingService;
+    private final com.gmart.service.OrderService orderService;
 
-    public CouponController(PricingService pricingService) {
+    public CouponController(PricingService pricingService, com.gmart.service.OrderService orderService) {
         this.pricingService = pricingService;
+        this.orderService = orderService;
     }
 
     @GetMapping
@@ -32,6 +34,6 @@ public class CouponController {
                 "freeDeliveryThreshold", PricingService.FREE_DELIVERY_THRESHOLD,
                 "deliveryFee", PricingService.DELIVERY_FEE,
                 "handlingFee", PricingService.HANDLING_FEE,
-                "deliveryMinutes", com.gmart.service.OrderService.PROMISED_MINUTES)));
+                "deliveryMinutes", orderService.getPromisedMinutes())));
     }
 }

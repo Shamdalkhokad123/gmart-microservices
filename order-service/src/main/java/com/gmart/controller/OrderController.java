@@ -18,9 +18,33 @@ import java.util.List;
 public class OrderController {
 
     private final OrderService orderService;
+    private final com.gmart.service.OrderStatusService statusService;
 
-    public OrderController(OrderService orderService) {
+    public OrderController(OrderService orderService, com.gmart.service.OrderStatusService statusService) {
         this.orderService = orderService;
+        this.statusService = statusService;
+    }
+
+    /** Body for moving an order to its next fulfilment step (store staff). */
+    public record StatusUpdate(com.gmart.entity.OrderStatus status, String deliveryPartnerName, String deliveryPartnerPhone) {
+    }
+
+    /** Store staff: confirm, pack, send out (with rider) and mark delivered. */
+    @PutMapping("/{orderId}/status")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<ApiResponse<OrderDetail>> updateStatus(@PathVariable Integer orderId, @RequestBody StatusUpdate update) {
+        if (update == null || update.status() == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Status is required"));
+        }
+        if (update.status() == com.gmart.entity.OrderStatus.CANCELLED) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Use cancel to cancel an order (it handles refunds)"));
+        }
+        try {
+            OrderDetail order = statusService.advance(orderId, update.status(), update.deliveryPartnerName(), update.deliveryPartnerPhone());
+            return ResponseEntity.ok(ApiResponse.success("Order updated", order));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
     }
 
     @PostMapping("/checkout")

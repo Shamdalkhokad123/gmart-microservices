@@ -68,6 +68,14 @@ admin exists yet. Remove `ADMIN_PASSWORD` from the environment after the first s
 
 Generate secrets with, for example, `openssl rand -hex 32`.
 
+In production orders do **not** move by themselves: staff confirm, pack, send out (with the
+delivery partner's name and phone) and mark delivered from **Admin → Orders**
+(`PUT /api/orders/{id}/status`). The dev profile keeps a simulated store and rider for testing
+(`gmart.fulfilment.simulate=true`).
+
+The full launch checklist (Razorpay activation, hosting, legal pages) is
+[GO-LIVE.md](https://github.com/Shamdalkhokad123/DemoGmart/blob/feature/microservices-razorpay/GO-LIVE.md) in the DemoGmart repo.
+
 ## Configuration (environment variables)
 
 | Variable | Production | Dev profile default | Used by |
@@ -77,6 +85,8 @@ Generate secrets with, for example, `openssl rand -hex 32`.
 | `DB_USER`, `DB_PASSWORD` | **required** (use a per-service DB user, not root) | `root` / `root` | user, catalog, order, payment |
 | `DB_HOST` | `localhost` | `localhost` | user, catalog, order, payment |
 | `ADMIN_USERNAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` | first start only | not needed (demo admin) | user |
+| `DELIVERY_PROMISED_MINUTES`, `DELIVERY_RIDE_MINUTES` | `30`, `20` | `10`, `20` | order |
+| `ALLOWED_ORIGINS` | only if the site is on another domain | localhost:4200/4000 | gateway |
 | `REDIS_HOST` | `localhost` | `localhost` | catalog |
 | `KAFKA_SERVERS` | `localhost:9092` | `localhost:9092` | order |
 | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` | live keys | test key id, no secret | payment |

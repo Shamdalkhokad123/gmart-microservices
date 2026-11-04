@@ -26,15 +26,13 @@ spring:
           uri: ${PAYMENT_SERVICE_URI:http://localhost:8084}
           predicates:
             - Path=/api/payments/**
-      # CORS is handled here once (the services don't add CORS headers)
+      # CORS is handled here once (the services don't add CORS headers).
+      # Production serves the site and /api from the same domain, so no other origin is needed;
+      # set ALLOWED_ORIGINS (comma-separated) only if the site is on a different domain.
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOrigins:
-              - http://localhost:4200
-              - http://127.0.0.1:4200
-              - http://localhost:4000
-              - http://127.0.0.1:4000
+            allowedOrigins: ${ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200,http://localhost:4000,http://127.0.0.1:4000}
             allowedMethods: [GET, POST, PUT, DELETE, OPTIONS, PATCH]
             allowedHeaders: "*"
             exposedHeaders: [Authorization]

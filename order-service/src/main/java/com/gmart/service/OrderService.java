@@ -12,6 +12,7 @@ import com.gmart.entity.OrderStatus;
 import com.gmart.messaging.OrderEvents;
 import com.gmart.repository.CartItemRepository;
 import com.gmart.repository.OrderDetailRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -30,8 +31,6 @@ import java.util.stream.Collectors;
 @Service
 public class OrderService {
 
-    /** Promised delivery time shown to the customer. */
-    public static final int PROMISED_MINUTES = 10;
 
     /** A verified, captured Razorpay payment that an order is being created for. */
     public record OnlinePayment(String razorpayOrderId, String razorpayPaymentId, long amountPaise) {
@@ -44,10 +43,13 @@ public class OrderService {
     private final CatalogClient catalog;
     private final PaymentClient payments;
     private final TransactionTemplate tx;
+    private final int promisedMinutes;
 
     public OrderService(OrderDetailRepository orderDetailRepository, CartItemRepository cartItemRepository,
                         PricingService pricingService, ApplicationEventPublisher eventPublisher,
-                        CatalogClient catalog, PaymentClient payments, PlatformTransactionManager transactionManager) {
+                        CatalogClient catalog, PaymentClient payments, PlatformTransactionManager transactionManager,
+                        @Value("${gmart.delivery.promised-minutes:30}") int promisedMinutes) {
+        this.promisedMinutes = promisedMinutes;
         this.orderDetailRepository = orderDetailRepository;
         this.cartItemRepository = cartItemRepository;
         this.pricingService = pricingService;
@@ -55,6 +57,11 @@ public class OrderService {
         this.catalog = catalog;
         this.payments = payments;
         this.tx = new TransactionTemplate(transactionManager);
+    }
+
+    /** Delivery time promised to customers (gmart.delivery.promised-minutes). */
+    public int getPromisedMinutes() {
+        return promisedMinutes;
     }
 
     public static long toPaise(float rupees) {
@@ -151,7 +158,7 @@ public class OrderService {
         order.setCartItemId(cartItems.get(0).getCartItemId());
         order.setItemsSummary(itemsSummary.length() > 1990 ? itemsSummary.substring(0, 1990) + "…" : itemsSummary);
         order.setStatus(OrderStatus.PLACED);
-        order.setEstimatedDeliveryAt(new Date(now.getTime() + PROMISED_MINUTES * 60_000L));
+        order.setEstimatedDeliveryAt(new Date(now.getTime() + promisedMinutes * 60_000L));
         OrderDetail saved = orderDetailRepository.save(order);
 
         // Move cart lines onto the order
