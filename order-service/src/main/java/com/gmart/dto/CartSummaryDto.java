@@ -11,6 +11,14 @@ public class CartSummaryDto {
     private BigDecimal grandTotal;   // amount to pay (kept for older clients)
     private int totalItems;
     private BillDetails bill;
+    /** The one store this cart is from (null when empty). */
+    private Integer storeId;
+    private String storeName;
+
+    public Integer getStoreId() { return storeId; }
+    public void setStoreId(Integer storeId) { this.storeId = storeId; }
+    public String getStoreName() { return storeName; }
+    public void setStoreName(String storeName) { this.storeName = storeName; }
 
     public CartSummaryDto() {
     }

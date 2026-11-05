@@ -11,6 +11,8 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, Intege
     List<OrderDetail> findByUsernameOrderByOrderDateDesc(String username);
     List<OrderDetail> findAllByOrderByOrderDateDesc();
 
+    List<OrderDetail> findByStoreIdOrderByOrderDateDesc(Integer storeId);
+
     List<OrderDetail> findByStatusIn(java.util.Collection<com.gmart.entity.OrderStatus> statuses);
 
     java.util.Optional<OrderDetail> findByRazorpayOrderId(String razorpayOrderId);

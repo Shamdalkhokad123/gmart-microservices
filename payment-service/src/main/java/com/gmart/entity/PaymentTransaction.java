@@ -48,6 +48,26 @@ public class PaymentTransaction {
     @Column(length = 20, nullable = false)
     private Status status;
 
+    /** Store being paid (marketplace). */
+    @Column(name = "store_id")
+    private Integer storeId;
+
+    /** Razorpay Route linked account that received the store's share. */
+    @Column(length = 40)
+    private String linkedAccountId;
+
+    /** Store's share transferred to the linked account, in paise (total minus platform commission and fees). */
+    private Long transferAmountPaise;
+
+    public Integer getStoreId() { return storeId; }
+    public void setStoreId(Integer storeId) { this.storeId = storeId; }
+    public String getLinkedAccountId() { return linkedAccountId; }
+    public void setLinkedAccountId(String linkedAccountId) { this.linkedAccountId = linkedAccountId; }
+    public Long getTransferAmountPaise() { return transferAmountPaise; }
+    public void setTransferAmountPaise(Long transferAmountPaise) { this.transferAmountPaise = transferAmountPaise; }
+    /** True when a Route transfer was attached (refunds must reverse it). */
+    public boolean hasTransfer() { return linkedAccountId != null && transferAmountPaise != null && transferAmountPaise > 0; }
+
     /** GMart order created from this payment. */
     private Integer orderId;
 

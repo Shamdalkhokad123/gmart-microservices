@@ -14,7 +14,8 @@ import java.util.Map;
 public class ServiceClients {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Quote(java.math.BigDecimal toPay, String couponCode, boolean couponApplied) {
+    public record Quote(java.math.BigDecimal toPay, java.math.BigDecimal itemTotal, java.math.BigDecimal couponDiscount,
+                        String couponCode, boolean couponApplied, Integer storeId) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -29,13 +30,26 @@ public class ServiceClients {
 
     private final InternalClient orders;
     private final InternalClient users;
+    private final InternalClient stores;
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record StoreInfo(Integer id, String name, boolean acceptingOrders, java.math.BigDecimal commissionPercent,
+                            String razorpayAccountId) {
+    }
+
+    /** Store terms: commission and Route linked account. */
+    public StoreInfo store(Integer storeId) {
+        return stores.get("/internal/stores/{id}", new ParameterizedTypeReference<StoreInfo>() {}, storeId);
+    }
 
     public ServiceClients(@Value("${gmart.services.order-url}") String orderUrl,
                           @Value("${gmart.services.user-url}") String userUrl,
+                          @Value("${gmart.services.store-url}") String storeUrl,
                           @Value("${gmart.internal.token}") String token,
                           ObjectMapper objectMapper) {
         this.orders = new InternalClient("Order service", orderUrl, token, objectMapper);
         this.users = new InternalClient("User service", userUrl, token, objectMapper);
+        this.stores = new InternalClient("Store service", storeUrl, token, objectMapper);
     }
 
     /** Server-side total of the customer's cart (throws with the reason if it can't be ordered). */

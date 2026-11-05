@@ -34,7 +34,8 @@ public class CartController {
         try {
             Integer productId = Integer.parseInt(payload.get("productId").toString());
             int quantity = payload.containsKey("quantity") ? Integer.parseInt(payload.get("quantity").toString()) : 1;
-            CartItem item = cartService.addToCart(authentication.getName(), productId, quantity);
+            boolean replaceCart = Boolean.parseBoolean(String.valueOf(payload.getOrDefault("replaceCart", "false")));
+            CartItem item = cartService.addToCart(authentication.getName(), productId, quantity, replaceCart);
             return ResponseEntity.ok(ApiResponse.success("Added to cart", item));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));

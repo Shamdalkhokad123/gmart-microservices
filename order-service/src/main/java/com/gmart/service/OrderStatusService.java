@@ -51,10 +51,25 @@ public class OrderStatusService {
      * Advance an order one step. {@code riderName}/{@code riderPhone} are required when
      * sending it out for delivery.
      */
+    /** Staff/owner of the order's store, or the super admin. */
     @Transactional
-    public OrderDetail advance(Integer orderId, OrderStatus next, String riderName, String riderPhone) {
+    public OrderDetail advance(com.gmart.security.CurrentUser me, Integer orderId, OrderStatus next, String riderName, String riderPhone) {
         OrderDetail order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new BusinessException("Order not found", 404));
+        if (me != null && !me.canManage(order.getStoreId())) {
+            throw new BusinessException("You can only manage your own store's orders", 403);
+        }
+        return doAdvance(order, next, riderName, riderPhone);
+    }
+
+    /** Development simulator: no user. */
+    @Transactional
+    public OrderDetail advance(Integer orderId, OrderStatus next, String riderName, String riderPhone) {
+        return advance(null, orderId, next, riderName, riderPhone);
+    }
+
+    private OrderDetail doAdvance(OrderDetail order, OrderStatus next, String riderName, String riderPhone) {
+        Integer orderId = order.getOrderId();
         OrderStatus current = order.getStatus() == null ? OrderStatus.PLACED : order.getStatus();
         if (current == next) {
             return withItems(order); // already there (double click, retry)

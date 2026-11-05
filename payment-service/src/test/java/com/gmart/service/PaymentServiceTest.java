@@ -71,7 +71,7 @@ class PaymentServiceTest {
         assertThat(service.verifyPayment("asha", request()).path("orderId").asInt()).isEqualTo(42);
         assertThat(payment.getStatus()).isEqualTo(Status.PAID);
         assertThat(payment.getOrderId()).isEqualTo(42);
-        verify(razorpay, never()).refund(any(), anyLong());
+        verify(razorpay, never()).refund(any(), anyLong(), anyBoolean());
     }
 
     @Test
@@ -119,12 +119,12 @@ class PaymentServiceTest {
     void orderFailureRefundsTheCustomer() {
         razorpayReports("captured", 83200);
         when(services.createPaidOrder(any())).thenThrow(new BusinessException("Only 1 of Milk left", 409));
-        when(razorpay.refund("pay_1", 83200)).thenReturn(Map.of("id", "rfnd_1"));
+        when(razorpay.refund("pay_1", 83200, false)).thenReturn(Map.of("id", "rfnd_1"));
 
         assertThatThrownBy(() -> service.verifyPayment("asha", request()))
                 .hasMessageContaining("Only 1 of Milk left")
                 .hasMessageContaining("refunded");
-        verify(razorpay).refund("pay_1", 83200);
+        verify(razorpay).refund("pay_1", 83200, false);
         assertThat(payment.getStatus()).isEqualTo(Status.REFUNDED);
         assertThat(payment.getFailureReason()).isEqualTo("Only 1 of Milk left");
     }
@@ -133,13 +133,13 @@ class PaymentServiceTest {
     void failedRefundIsKeptForRetry() {
         razorpayReports("captured", 83200);
         when(services.createPaidOrder(any())).thenThrow(new BusinessException("Only 1 of Milk left", 409));
-        when(razorpay.refund("pay_1", 83200)).thenThrow(new RazorpayClient.PaymentGatewayException("down", null));
+        when(razorpay.refund("pay_1", 83200, false)).thenThrow(new RazorpayClient.PaymentGatewayException("down", null));
 
         assertThatThrownBy(() -> service.verifyPayment("asha", request())).isInstanceOf(BusinessException.class);
         assertThat(payment.getStatus()).isEqualTo(Status.REFUND_PENDING);
 
         reset(razorpay);
-        when(razorpay.refund("pay_1", 83200)).thenReturn(Map.of("id", "rfnd_1"));
+        when(razorpay.refund("pay_1", 83200, false)).thenReturn(Map.of("id", "rfnd_1"));
         assertThat(service.retryRefund(payment)).isTrue();
         assertThat(payment.getStatus()).isEqualTo(Status.REFUNDED);
     }

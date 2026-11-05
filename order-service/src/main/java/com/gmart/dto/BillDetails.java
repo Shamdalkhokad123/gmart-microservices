@@ -19,6 +19,11 @@ public class BillDetails {
     private BigDecimal totalSavings = BigDecimal.ZERO;
     private BigDecimal freeDeliveryThreshold = BigDecimal.ZERO;
     private BigDecimal amountForFreeDelivery = BigDecimal.ZERO;
+    /** Store the cart is from (set on quotes for payment-service). */
+    private Integer storeId;
+
+    public Integer getStoreId() { return storeId; }
+    public void setStoreId(Integer storeId) { this.storeId = storeId; }
 
     public BigDecimal getMrpTotal() { return mrpTotal; }
     public void setMrpTotal(BigDecimal mrpTotal) { this.mrpTotal = mrpTotal; }

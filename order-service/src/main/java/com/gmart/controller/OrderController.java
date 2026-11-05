@@ -20,10 +20,13 @@ public class OrderController {
 
     private final OrderService orderService;
     private final com.gmart.service.OrderStatusService statusService;
+    private final com.gmart.service.EarningsService earningsService;
 
-    public OrderController(OrderService orderService, com.gmart.service.OrderStatusService statusService) {
+    public OrderController(OrderService orderService, com.gmart.service.OrderStatusService statusService,
+                           com.gmart.service.EarningsService earningsService) {
         this.orderService = orderService;
         this.statusService = statusService;
+        this.earningsService = earningsService;
     }
 
     /** Body for moving an order to its next fulfilment step (store staff). */
@@ -33,7 +36,7 @@ public class OrderController {
     /** Store staff: confirm, pack, send out (with rider) and mark delivered. */
     @PutMapping("/{orderId}/status")
     @PreAuthorize(com.gmart.security.Roles.CAN_MANAGE_STORE)
-    public ResponseEntity<ApiResponse<OrderDetail>> updateStatus(@PathVariable Integer orderId, @RequestBody StatusUpdate update) {
+    public ResponseEntity<ApiResponse<OrderDetail>> updateStatus(Authentication authentication, @PathVariable Integer orderId, @RequestBody StatusUpdate update) {
         if (update == null || update.status() == null) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Status is required"));
         }
@@ -41,10 +44,11 @@ public class OrderController {
             return ResponseEntity.badRequest().body(ApiResponse.error("Use cancel to cancel an order (it handles refunds)"));
         }
         try {
-            OrderDetail order = statusService.advance(orderId, update.status(), update.deliveryPartnerName(), update.deliveryPartnerPhone());
+            OrderDetail order = statusService.advance(com.gmart.security.CurrentUser.of(authentication), orderId,
+                    update.status(), update.deliveryPartnerName(), update.deliveryPartnerPhone());
             return ResponseEntity.ok(ApiResponse.success("Order updated", order));
         } catch (com.gmart.web.BusinessException e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
+            return ResponseEntity.status(e.getStatus()).body(ApiResponse.error(e.getMessage()));
         }
     }
 
@@ -71,7 +75,7 @@ public class OrderController {
     @GetMapping("/{orderId}")
     public ResponseEntity<ApiResponse<OrderDetail>> getOrderById(Authentication authentication, @PathVariable Integer orderId) {
         try {
-            OrderDetail order = orderService.getOrderForUser(orderId, authentication.getName(), isAdmin(authentication));
+            OrderDetail order = orderService.getOrderFor(com.gmart.security.CurrentUser.of(authentication), orderId);
             return ResponseEntity.ok(ApiResponse.success("Order retrieved", order));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(Errors.userMessage(e)));
@@ -81,20 +85,40 @@ public class OrderController {
     @PostMapping("/{orderId}/cancel")
     public ResponseEntity<ApiResponse<OrderDetail>> cancel(Authentication authentication, @PathVariable Integer orderId) {
         try {
-            OrderDetail order = orderService.cancelOrder(orderId, authentication.getName(), isAdmin(authentication));
+            OrderDetail order = orderService.cancelOrder(orderId, com.gmart.security.CurrentUser.of(authentication));
             return ResponseEntity.ok(ApiResponse.success("Order cancelled", order));
+        } catch (com.gmart.web.BusinessException e) {
+            int status = e.getStatus() == 404 || e.getStatus() == 403 ? e.getStatus() : 400;
+            return ResponseEntity.status(status).body(ApiResponse.error(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
     }
 
+    /** Super admin: every store's orders. */
     @GetMapping("/all")
     @PreAuthorize("hasAuthority('ROLE_SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<List<OrderDetail>>> getAllOrders() {
         return ResponseEntity.ok(ApiResponse.success("All orders retrieved", orderService.getAllOrders()));
     }
 
-    private static boolean isAdmin(Authentication auth) {
-        return auth.getAuthorities().stream().anyMatch(a -> "ROLE_SUPER_ADMIN".equals(a.getAuthority()));
+    /** Owner (own store) or super admin (?storeId=): earnings and commission for a period (default: this month). */
+    @GetMapping("/store/earnings")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN','ROLE_STORE_OWNER')")
+    public ResponseEntity<ApiResponse<com.gmart.service.EarningsService.Report>> earnings(
+            Authentication authentication, @RequestParam(required = false) Integer storeId,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate from,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate to) {
+        return ResponseEntity.ok(ApiResponse.success("Earnings",
+                earningsService.report(com.gmart.security.CurrentUser.of(authentication), storeId, from, to)));
+    }
+
+    /** Store console: owner/staff get their store's orders; super admin passes ?storeId=. */
+    @GetMapping("/store")
+    @PreAuthorize(com.gmart.security.Roles.CAN_MANAGE_STORE)
+    public ResponseEntity<ApiResponse<List<OrderDetail>>> getStoreOrders(Authentication authentication,
+                                                                       @RequestParam(required = false) Integer storeId) {
+        return ResponseEntity.ok(ApiResponse.success("Store orders",
+                orderService.getOrdersForStore(com.gmart.security.CurrentUser.of(authentication), storeId)));
     }
 }

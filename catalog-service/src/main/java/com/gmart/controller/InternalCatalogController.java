@@ -30,7 +30,7 @@ public class InternalCatalogController {
     /** Current price, MRP and stock for the given products (not cached). */
     @GetMapping("/products")
     public ResponseEntity<ApiResponse<List<Product>>> products(@RequestParam List<Integer> ids) {
-        return ResponseEntity.ok(ApiResponse.success("Products", productRepository.findAllById(ids)));
+        return ResponseEntity.ok(ApiResponse.success("Products", productService.withStoreNames(productRepository.findAllById(ids))));
     }
 
     @PostMapping("/stock/reserve")

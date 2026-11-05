@@ -54,7 +54,7 @@ public class InternalOrderController {
     @GetMapping("/{orderId}")
     public ResponseEntity<ApiResponse<OrderDetail>> get(@PathVariable Integer orderId) {
         try {
-            return ResponseEntity.ok(ApiResponse.success("Order", orderService.getOrderForUser(orderId, null, true)));
+            return ResponseEntity.ok(ApiResponse.success("Order", orderService.getOrder(orderId)));
         } catch (Exception e) {
             return ResponseEntity.status(404).body(ApiResponse.error(Errors.userMessage(e)));
         }

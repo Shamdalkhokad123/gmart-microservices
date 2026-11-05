@@ -27,6 +27,13 @@ public class CartItem {
 
     private String imageUrl;
 
+    /** Store the product is sold by (a cart holds one store's products). */
+    @Column(name = "store_id")
+    private Integer storeId;
+
+    public Integer getStoreId() { return storeId; }
+    public void setStoreId(Integer storeId) { this.storeId = storeId; }
+
     /** Set at checkout; links the line item to its order. */
     private Integer orderId;
 

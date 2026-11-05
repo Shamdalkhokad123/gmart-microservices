@@ -22,7 +22,7 @@ public class CatalogClient {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record ProductInfo(Integer productId, String productName, java.math.BigDecimal price, java.math.BigDecimal mrp,
-                              String unit, Integer stock, String imageUrl) {
+                              String unit, Integer stock, String imageUrl, Integer storeId, String storeName) {
     }
 
     public record StockLine(Integer productId, String productName, int quantity) {

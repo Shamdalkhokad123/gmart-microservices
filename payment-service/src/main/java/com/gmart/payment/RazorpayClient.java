@@ -59,11 +59,29 @@ public class RazorpayClient {
 
     /** POST /orders. Amount is in paise. Returns the Razorpay order entity. */
     public Map<String, Object> createOrder(long amountPaise, String currency, String receipt, Map<String, String> notes) {
+        return createOrder(amountPaise, currency, receipt, notes, null, 0);
+    }
+
+    /**
+     * POST /orders with a Razorpay Route transfer: {@code transferPaise} of the payment goes to the
+     * store's linked account ({@code acc_...}) once it is captured; the rest stays with the platform.
+     */
+    public Map<String, Object> createOrder(long amountPaise, String currency, String receipt, Map<String, String> notes,
+                                           String linkedAccountId, long transferPaise) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("amount", amountPaise);
         body.put("currency", currency);
         body.put("receipt", receipt);
         body.put("notes", notes);
+        if (linkedAccountId != null && transferPaise > 0) {
+            Map<String, Object> transfer = new LinkedHashMap<>();
+            transfer.put("account", linkedAccountId);
+            transfer.put("amount", transferPaise);
+            transfer.put("currency", currency);
+            transfer.put("notes", notes);
+            transfer.put("on_hold", 0);
+            body.put("transfers", java.util.List.of(transfer));
+        }
         return post("/orders", body);
     }
 
@@ -95,7 +113,18 @@ public class RazorpayClient {
 
     /** POST /payments/{id}/refund (full refund of the given amount). */
     public Map<String, Object> refund(String paymentId, long amountPaise) {
-        return post("/payments/" + paymentId + "/refund", Map.of("amount", amountPaise, "speed", "normal"));
+        return refund(paymentId, amountPaise, false);
+    }
+
+    /** {@code reverseTransfers}: also take back the store's Route transfer (reverse_all). */
+    public Map<String, Object> refund(String paymentId, long amountPaise, boolean reverseTransfers) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("amount", amountPaise);
+        body.put("speed", "normal");
+        if (reverseTransfers) {
+            body.put("reverse_all", 1);
+        }
+        return post("/payments/" + paymentId + "/refund", body);
     }
 
     /** Checkout handler signature: HMAC_SHA256(order_id + "|" + payment_id, key_secret). */

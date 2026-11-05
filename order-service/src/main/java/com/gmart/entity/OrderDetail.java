@@ -31,6 +31,22 @@ public class OrderDetail {
 
     private String username;
 
+    // --- Store (marketplace) ---
+    @Column(name = "store_id")
+    private Integer storeId;
+    @Column(length = 120)
+    private String storeName;
+    /** Platform commission (percent of item sales) agreed when the order was placed. */
+    @Column(precision = 5, scale = 2)
+    private BigDecimal commissionPercent;
+
+    public Integer getStoreId() { return storeId; }
+    public void setStoreId(Integer storeId) { this.storeId = storeId; }
+    public String getStoreName() { return storeName; }
+    public void setStoreName(String storeName) { this.storeName = storeName; }
+    public BigDecimal getCommissionPercent() { return commissionPercent; }
+    public void setCommissionPercent(BigDecimal commissionPercent) { this.commissionPercent = commissionPercent; }
+
     @Temporal(TemporalType.TIMESTAMP)
     private Date orderDate;
 

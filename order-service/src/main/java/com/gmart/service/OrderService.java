@@ -47,15 +47,18 @@ public class OrderService {
     private final int promisedMinutes;
     private final StockReleaseService stockReleases;
     private final io.micrometer.core.instrument.MeterRegistry meters;
+    private final com.gmart.client.StoreClient storeClient;
 
     public OrderService(OrderDetailRepository orderDetailRepository, CartItemRepository cartItemRepository,
                         PricingService pricingService, ApplicationEventPublisher eventPublisher,
                         CatalogClient catalog, PaymentClient payments, PlatformTransactionManager transactionManager,
                         StockReleaseService stockReleases, io.micrometer.core.instrument.MeterRegistry meters,
+                        com.gmart.client.StoreClient storeClient,
                         @Value("${gmart.delivery.promised-minutes:30}") int promisedMinutes) {
         this.promisedMinutes = promisedMinutes;
         this.stockReleases = stockReleases;
         this.meters = meters;
+        this.storeClient = storeClient;
         this.orderDetailRepository = orderDetailRepository;
         this.cartItemRepository = cartItemRepository;
         this.pricingService = pricingService;
@@ -78,6 +81,7 @@ public class OrderService {
     /** Price the cart exactly as checkout would, without reserving stock. Used to decide how much to charge online. */
     public BillDetails quote(String username, String couponCode) {
         List<CartItem> cart = loadCart(username);
+        storeClient.requireAcceptingOrders(cartStore(cart));
         Map<Integer, ProductInfo> products = byId(catalog.products(cart.stream().map(CartItem::getProductId).toList()));
         for (CartItem item : cart) {
             ProductInfo p = products.get(item.getProductId());
@@ -92,7 +96,9 @@ public class OrderService {
             }
             applyCurrentPrice(item, p);
         }
-        return priceCart(cart, couponCode, username);
+        BillDetails bill = priceCart(cart, couponCode, username);
+        bill.setStoreId(cartStore(cart));
+        return bill;
     }
 
     /** Cash on delivery checkout. */
@@ -112,6 +118,7 @@ public class OrderService {
             }
         }
         List<CartItem> cart = loadCart(username);
+        com.gmart.client.StoreClient.StoreInfo store = storeClient.requireAcceptingOrders(cartStore(cart));
         List<StockLine> lines = toLines(cart);
 
         // 1. Reserve stock in catalog-service (fails the whole checkout if anything ran out)
@@ -119,7 +126,7 @@ public class OrderService {
 
         // 2. Save the order here; on any failure, give the stock back
         try {
-            return tx.execute(status -> placeOrder(username, request, payment, cart, reserved));
+            return tx.execute(status -> placeOrder(username, request, payment, cart, reserved, store));
         } catch (RuntimeException e) {
             // Give the reserved stock back (saved first, so it is retried if catalog is down)
             stockReleases.sendNow(stockReleases.enqueue(null, lines));
@@ -128,7 +135,8 @@ public class OrderService {
     }
 
     private OrderDetail placeOrder(String username, CheckoutRequest request, OnlinePayment payment,
-                                   List<CartItem> cartItems, Map<Integer, ProductInfo> reserved) {
+                                   List<CartItem> cartItems, Map<Integer, ProductInfo> reserved,
+                                   com.gmart.client.StoreClient.StoreInfo store) {
         for (CartItem item : cartItems) {
             applyCurrentPrice(item, reserved.get(item.getProductId())); // charge the current price
         }
@@ -146,6 +154,9 @@ public class OrderService {
         Date now = new Date();
         OrderDetail order = new OrderDetail();
         order.setUsername(username);
+        order.setStoreId(store.id());
+        order.setStoreName(store.name());
+        order.setCommissionPercent(store.commissionPercent());
         order.setOrderDate(now);
         order.setShippingAddr(request.getShippingAddr());
         order.setTrans(request.getTrans());
@@ -182,20 +193,44 @@ public class OrderService {
         return saved;
     }
 
-    /** Fetch an order with its items; customers can only see their own. */
-    public OrderDetail getOrderForUser(Integer orderId, String username, boolean isAdmin) {
-        OrderDetail order = orderDetailRepository.findById(orderId)
-                .orElseThrow(() -> new BusinessException("Order not found"));
-        if (!isAdmin && !order.getUsername().equals(username)) {
-            throw new BusinessException("Order not found");
-        }
-        return withItems(order);
+    /** Any order (internal use, e.g. payment-service). */
+    public OrderDetail getOrder(Integer orderId) {
+        return withItems(orderDetailRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException("Order not found", 404)));
     }
 
-    public OrderDetail cancelOrder(Integer orderId, String username, boolean isAdmin) {
+    /** The customer who placed it, its store's owner/staff, or the super admin. Others get "not found". */
+    public OrderDetail getOrderFor(com.gmart.security.CurrentUser me, Integer orderId) {
+        OrderDetail order = getOrder(orderId);
+        if (!order.getUsername().equals(me.username()) && !me.canManage(order.getStoreId())) {
+            throw new BusinessException("Order not found", 404);
+        }
+        return order;
+    }
+
+    /** Store console: the store's orders (owner/staff: their store; super admin: any store). */
+    public List<OrderDetail> getOrdersForStore(com.gmart.security.CurrentUser me, Integer storeId) {
+        Integer store = me.isSuperAdmin() ? storeId : me.requireStore();
+        if (store == null) {
+            throw new BusinessException("Choose a store");
+        }
+        me.requireManage(store);
+        return orderDetailRepository.findByStoreIdOrderByOrderDateDesc(store);
+    }
+
+    /**
+     * Cancel (and refund if paid online): the customer who placed it, the store's owner, or the
+     * super admin. Staff can't cancel or refund.
+     */
+    public OrderDetail cancelOrder(Integer orderId, com.gmart.security.CurrentUser me) {
         Long[] releaseId = new Long[1];
         OrderDetail cancelled = tx.execute(status -> {
-            OrderDetail order = getOrderForUser(orderId, username, isAdmin);
+            OrderDetail order = getOrder(orderId);
+            boolean customer = order.getUsername().equals(me.username());
+            if (!customer && !me.canOwn(order.getStoreId())) {
+                throw new BusinessException(me.isStaff() && me.worksFor(order.getStoreId())
+                        ? "Only the store owner can cancel orders" : "Order not found", me.isStaff() ? 403 : 404);
+            }
             if (order.getStatus() == null || !order.getStatus().isCancellable()) {
                 throw new BusinessException("This order can no longer be cancelled");
             }
@@ -226,6 +261,11 @@ public class OrderService {
     }
 
     // --- helpers ---
+
+    /** The cart's store (carts hold one store's products). */
+    private static Integer cartStore(List<CartItem> cart) {
+        return cart.isEmpty() ? null : cart.get(0).getStoreId();
+    }
 
     private List<CartItem> loadCart(String username) {
         List<CartItem> cartItems = cartItemRepository.findByUserNameAndPaymentStatus(username, "NP");

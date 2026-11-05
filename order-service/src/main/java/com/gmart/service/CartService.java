@@ -22,7 +22,11 @@ public class CartService {
     private final CatalogClient catalog;
     private final PricingService pricingService;
 
-    public CartService(CartItemRepository cartItemRepository, CatalogClient catalog, PricingService pricingService) {
+    private final com.gmart.client.StoreClient storeClient;
+
+    public CartService(CartItemRepository cartItemRepository, CatalogClient catalog, PricingService pricingService,
+                       com.gmart.client.StoreClient storeClient) {
+        this.storeClient = storeClient;
         this.cartItemRepository = cartItemRepository;
         this.catalog = catalog;
         this.pricingService = pricingService;
@@ -31,12 +35,52 @@ public class CartService {
     public CartSummaryDto getCartForUser(String username, String couponCode) {
         List<CartItem> items = cartItemRepository.findByUserNameAndPaymentStatus(username, "NP");
         int totalItems = items.stream().mapToInt(CartItem::getQuantity).sum();
-        return new CartSummaryDto(items, pricingService.calculate(items, couponCode, username), totalItems);
+        CartSummaryDto dto = new CartSummaryDto(items, pricingService.calculate(items, couponCode, username), totalItems);
+        if (!items.isEmpty()) {
+            dto.setStoreId(items.get(0).getStoreId());
+            dto.setStoreName(storeName(items.get(0).getStoreId()));
+        }
+        return dto;
     }
 
+    /** Store names (cart header and messages); filled from products added and store-service. */
+    private final java.util.Map<Integer, String> storeNames = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private String storeName(Integer storeId) {
+        if (storeId == null) return "another store";
+        return storeNames.computeIfAbsent(storeId, id -> {
+            try {
+                return storeClient.get(id).name();
+            } catch (RuntimeException e) {
+                return "another store";
+            }
+        });
+    }
+
+    /**
+     * One store per cart. Adding from a different store fails with 409 unless
+     * {@code replaceCart} is true, in which case the old cart is emptied first.
+     */
     @Transactional
-    public CartItem addToCart(String username, Integer productId, int quantity) {
+    public CartItem addToCart(String username, Integer productId, int quantity, boolean replaceCart) {
         ProductInfo product = catalog.product(productId);
+        if (product.storeId() == null) {
+            throw new BusinessException("This product isn't available");
+        }
+        if (product.storeName() != null) {
+            storeNames.put(product.storeId(), product.storeName());
+        }
+        List<CartItem> cart = cartItemRepository.findByUserNameAndPaymentStatus(username, "NP");
+        CartItem other = cart.stream().filter(i -> !product.storeId().equals(i.getStoreId())).findFirst().orElse(null);
+        if (other != null) {
+            if (!replaceCart) {
+                String current = storeName(other.getStoreId());
+                throw new BusinessException("Your cart has items from " + current + ". Start a new cart to shop from "
+                        + (product.storeName() == null ? "this store" : product.storeName()) + "?", 409);
+            }
+            cartItemRepository.deleteAll(cart);
+            cartItemRepository.flush();
+        }
 
         Optional<CartItem> existingOpt = cartItemRepository.findByUserNameAndProductIdAndPaymentStatus(username, productId, "NP");
         int newQty = existingOpt.map(CartItem::getQuantity).orElse(0) + quantity;
@@ -50,6 +94,7 @@ public class CartService {
             return ci;
         });
         // Always refresh the snapshot so the cart shows current prices
+        cartItem.setStoreId(product.storeId());
         cartItem.setProductName(product.productName());
         cartItem.setPrice(product.price());
         cartItem.setMrp(product.mrp());

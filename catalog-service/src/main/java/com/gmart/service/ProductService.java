@@ -118,7 +118,7 @@ public class ProductService {
 
     // ---------------- helpers ----------------
 
-    private List<Product> withStoreNames(List<Product> list) {
+    public List<Product> withStoreNames(List<Product> list) {
         Map<Integer, String> names = stores.findAll().stream()
                 .collect(Collectors.toMap(CatalogStore::getId, CatalogStore::getName, (a, b) -> a));
         list.forEach(p -> p.setStoreName(names.get(p.getStoreId())));

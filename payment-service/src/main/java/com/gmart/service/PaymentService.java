@@ -67,6 +67,20 @@ public class PaymentService {
         this.storeName = storeName;
     }
 
+    /**
+     * The store's share in paise: item sales after the coupon, minus the platform commission.
+     * Delivery and handling fees stay with the platform. Never more than the amount paid.
+     */
+    static long storeShare(Quote quote, java.math.BigDecimal commissionPercent, long amountPaise) {
+        java.math.BigDecimal items = quote.itemTotal() == null ? java.math.BigDecimal.ZERO : quote.itemTotal();
+        java.math.BigDecimal discount = quote.couponDiscount() == null ? java.math.BigDecimal.ZERO : quote.couponDiscount();
+        java.math.BigDecimal net = items.subtract(discount).max(java.math.BigDecimal.ZERO);
+        java.math.BigDecimal pct = commissionPercent == null ? java.math.BigDecimal.ZERO : commissionPercent;
+        java.math.BigDecimal share = net.multiply(java.math.BigDecimal.valueOf(100).subtract(pct))
+                .divide(java.math.BigDecimal.valueOf(100), 2, java.math.RoundingMode.DOWN);
+        return Math.min(toPaise(share), amountPaise);
+    }
+
     /** Rupees to paise, exactly (Razorpay works in paise). */
     public static long toPaise(java.math.BigDecimal rupees) {
         return rupees.movePointRight(2).setScale(0, java.math.RoundingMode.HALF_UP).longValueExact();
@@ -81,10 +95,17 @@ public class PaymentService {
         if (amountPaise < 100) {
             throw new BusinessException("Online payments must be at least ₹1");
         }
+        // Marketplace: the store's share goes to its Razorpay Route linked account
+        ServiceClients.StoreInfo store = services.store(quote.storeId());
+        if (store.razorpayAccountId() == null || store.razorpayAccountId().isBlank()) {
+            throw new BusinessException(store.name() + " accepts cash on delivery only for now");
+        }
+        long transferPaise = storeShare(quote, store.commissionPercent(), amountPaise);
 
         String receipt = ("gm_" + System.currentTimeMillis() + "_" + username);
         receipt = receipt.length() > 40 ? receipt.substring(0, 40) : receipt;
-        Map<String, Object> rzpOrder = razorpay.createOrder(amountPaise, currency, receipt, Map.of("username", username));
+        Map<String, Object> rzpOrder = razorpay.createOrder(amountPaise, currency, receipt,
+                Map.of("username", username, "store", String.valueOf(store.id())), store.razorpayAccountId(), transferPaise);
 
         PaymentTransaction payment = new PaymentTransaction();
         payment.setRazorpayOrderId(String.valueOf(rzpOrder.get("id")));
@@ -94,6 +115,9 @@ public class PaymentService {
         payment.setCouponCode(quote.couponApplied() ? quote.couponCode() : null);
         payment.setShippingAddr(request.shippingAddr());
         payment.setStatus(PaymentTransaction.Status.CREATED);
+        payment.setStoreId(store.id());
+        payment.setLinkedAccountId(store.razorpayAccountId());
+        payment.setTransferAmountPaise(transferPaise);
         paymentRepository.save(payment);
         return toResponse(payment);
     }
@@ -189,7 +213,7 @@ public class PaymentService {
     /** Reconciler step for REFUND_PENDING: try the refund again. */
     public boolean retryRefund(PaymentTransaction payment) {
         try {
-            razorpay.refund(payment.getRazorpayPaymentId(), payment.getAmountPaise());
+            razorpay.refund(payment.getRazorpayPaymentId(), payment.getAmountPaise(), payment.hasTransfer());
             payment.setStatus(PaymentTransaction.Status.REFUNDED);
             paymentRepository.save(payment);
             log.info("Pending refund for {} completed after {} attempts", payment.getRazorpayPaymentId(), payment.getRefundAttempts());
@@ -205,7 +229,9 @@ public class PaymentService {
 
     /** Full refund requested by order-service when a paid order is cancelled. Returns the refund id. */
     public String refund(String razorpayPaymentId, long amountPaise) {
-        Map<String, Object> refund = razorpay.refund(razorpayPaymentId, amountPaise);
+        boolean reverse = paymentRepository.findFirstByRazorpayPaymentId(razorpayPaymentId)
+                .map(PaymentTransaction::hasTransfer).orElse(false);
+        Map<String, Object> refund = razorpay.refund(razorpayPaymentId, amountPaise, reverse);
         return String.valueOf(refund.get("id"));
     }
 
@@ -285,7 +311,7 @@ public class PaymentService {
             return;
         }
         try {
-            razorpay.refund(razorpayPaymentId, payment.getAmountPaise());
+            razorpay.refund(razorpayPaymentId, payment.getAmountPaise(), payment.hasTransfer());
             payment.setStatus(PaymentTransaction.Status.REFUNDED);
             meters.counter("gmart.payments", "outcome", "refunded_order_failed").increment();
             log.warn("Refunded payment {} for {}: {}", razorpayPaymentId, razorpayOrderId, reason);
