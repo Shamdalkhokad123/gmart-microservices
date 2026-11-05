@@ -18,10 +18,13 @@ public class InternalCatalogController {
 
     private final ProductRepository productRepository;
     private final StockService stockService;
+    private final com.gmart.service.ProductService productService;
 
-    public InternalCatalogController(ProductRepository productRepository, StockService stockService) {
+    public InternalCatalogController(ProductRepository productRepository, StockService stockService,
+                                     com.gmart.service.ProductService productService) {
         this.productRepository = productRepository;
         this.stockService = stockService;
+        this.productService = productService;
     }
 
     /** Current price, MRP and stock for the given products (not cached). */
@@ -37,6 +40,16 @@ public class InternalCatalogController {
         } catch (com.gmart.web.BusinessException e) {
             return ResponseEntity.status(e.getStatus()).body(ApiResponse.error(e.getMessage()));
         }
+    }
+
+    public record StoreSync(String name, boolean active) {
+    }
+
+    /** store-service: a store was approved, renamed, suspended or reactivated. */
+    @PutMapping("/stores/{id}")
+    public ResponseEntity<ApiResponse<Void>> syncStore(@PathVariable Integer id, @RequestBody StoreSync body) {
+        productService.syncStore(id, body.name(), body.active());
+        return ResponseEntity.ok(ApiResponse.success("Store synced"));
     }
 
     /** {@code releaseId} makes retries safe: the same release is only applied once. */

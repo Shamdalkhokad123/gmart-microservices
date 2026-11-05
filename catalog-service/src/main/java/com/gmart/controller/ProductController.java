@@ -1,11 +1,13 @@
 package com.gmart.controller;
 
-import com.gmart.web.Errors;
 import com.gmart.dto.ApiResponse;
 import com.gmart.entity.Product;
+import com.gmart.security.CurrentUser;
+import com.gmart.security.Roles;
 import com.gmart.service.ProductService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,61 +16,51 @@ import java.util.List;
 @RequestMapping("/products")
 public class ProductController {
 
-    @Autowired
-    private ProductService productService;
+    private final ProductService productService;
 
+    public ProductController(ProductService productService) {
+        this.productService = productService;
+    }
+
+    /** Customers: products of active stores; filter by store, category or search text. */
     @GetMapping
-    public ResponseEntity<ApiResponse<List<Product>>> getAllProducts(
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) String search) {
-        List<Product> products;
-        if (search != null && !search.trim().isEmpty()) {
-            products = productService.searchProducts(search.trim());
-        } else if (category != null && !category.trim().isEmpty()) {
-            products = productService.getProductsByCategory(category.trim());
-        } else {
-            products = productService.getAllProducts();
-        }
+    public ResponseEntity<ApiResponse<List<Product>>> list(@RequestParam(required = false) Integer storeId,
+                                                           @RequestParam(required = false) String category,
+                                                           @RequestParam(required = false) String search) {
+        List<Product> products = search != null && !search.isBlank()
+                ? productService.search(storeId, search.trim())
+                : productService.visible(storeId, category == null ? null : category.trim());
         return ResponseEntity.ok(ApiResponse.success("Products retrieved", products));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<Product>> getProductById(@PathVariable Integer id) {
-        try {
-            Product product = productService.getProductById(id);
-            return ResponseEntity.ok(ApiResponse.success("Product retrieved", product));
-        } catch (Exception e) {
-            return ResponseEntity.notFound().build();
-        }
+    @GetMapping("/{id:\\d+}")
+    public ResponseEntity<ApiResponse<Product>> get(@PathVariable Integer id) {
+        return ResponseEntity.ok(ApiResponse.success("Product retrieved", productService.visibleProduct(id)));
+    }
+
+    /** Store console: all of the store's products (owner/staff: own store; super admin: ?storeId=). */
+    @GetMapping("/manage")
+    @PreAuthorize(Roles.CAN_MANAGE_STORE)
+    public ResponseEntity<ApiResponse<List<Product>>> manage(Authentication auth, @RequestParam(required = false) Integer storeId) {
+        return ResponseEntity.ok(ApiResponse.success("Products", productService.manageList(CurrentUser.of(auth), storeId)));
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<Product>> createProduct(@RequestBody Product product) {
-        try {
-            Product created = productService.createProduct(product);
-            return ResponseEntity.ok(ApiResponse.success("Product created successfully", created));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
-        }
+    @PreAuthorize(Roles.CAN_MANAGE_STORE)
+    public ResponseEntity<ApiResponse<Product>> create(Authentication auth, @RequestBody Product product) {
+        return ResponseEntity.ok(ApiResponse.success("Product created", productService.create(CurrentUser.of(auth), product)));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<Product>> updateProduct(@PathVariable Integer id, @RequestBody Product product) {
-        try {
-            Product updated = productService.updateProduct(id, product);
-            return ResponseEntity.ok(ApiResponse.success("Product updated successfully", updated));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
-        }
+    @PreAuthorize(Roles.CAN_MANAGE_STORE)
+    public ResponseEntity<ApiResponse<Product>> update(Authentication auth, @PathVariable Integer id, @RequestBody Product product) {
+        return ResponseEntity.ok(ApiResponse.success("Product updated", productService.update(CurrentUser.of(auth), id, product)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteProduct(@PathVariable Integer id) {
-        try {
-            productService.deleteProduct(id);
-            return ResponseEntity.ok(ApiResponse.success("Product deleted successfully"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
-        }
+    @PreAuthorize(Roles.CAN_MANAGE_STORE)
+    public ResponseEntity<ApiResponse<Void>> delete(Authentication auth, @PathVariable Integer id) {
+        productService.delete(CurrentUser.of(auth), id);
+        return ResponseEntity.ok(ApiResponse.success("Product deleted"));
     }
 }

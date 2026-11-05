@@ -21,10 +21,13 @@ public class StockService {
 
     private final ProductRepository productRepository;
     private final ProcessedStockReleaseRepository processedReleases;
+    private final com.gmart.repository.CatalogStoreRepository stores;
 
-    public StockService(ProductRepository productRepository, ProcessedStockReleaseRepository processedReleases) {
+    public StockService(ProductRepository productRepository, ProcessedStockReleaseRepository processedReleases,
+                        com.gmart.repository.CatalogStoreRepository stores) {
         this.productRepository = productRepository;
         this.processedReleases = processedReleases;
+        this.stores = stores;
     }
 
     /**
@@ -39,6 +42,9 @@ public class StockService {
         for (StockLine line : sorted(lines)) {
             Product product = productRepository.lockById(line.productId())
                     .orElseThrow(() -> new BusinessException(name(line) + " is no longer available", 409));
+            if (product.getStoreId() == null || !stores.findById(product.getStoreId()).map(s -> s.isActive()).orElse(false)) {
+                throw new BusinessException(product.getProductName() + "'s store isn't taking orders right now", 409);
+            }
             int stock = product.getStock() == null ? Integer.MAX_VALUE : product.getStock();
             if (stock < line.quantity()) {
                 throw new BusinessException(stock <= 0

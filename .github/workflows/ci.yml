@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [api-gateway, user-service, catalog-service, order-service, payment-service]
+        service: [api-gateway, user-service, catalog-service, order-service, payment-service, store-service]
     steps:
       - uses: actions/checkout@v4
       - name: Build ${{ matrix.service }} image

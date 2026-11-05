@@ -13,7 +13,7 @@ CONTAINER="${MYSQL_CONTAINER:-$(docker compose -f docker-compose.prod.yml ps -q 
 STAMP="$(date +%Y%m%d-%H%M%S)"
 
 mkdir -p "$BACKUP_DIR"
-for db in gmart_user_db gmart_catalog_db gmart_order_db gmart_payment_db; do
+for db in gmart_user_db gmart_catalog_db gmart_order_db gmart_payment_db gmart_store_db; do
   out="$BACKUP_DIR/$db-$STAMP.sql.gz"
   # --single-transaction: consistent snapshot without locking the shop
   docker exec "$CONTAINER" sh -c "exec mysqldump -uroot -p\"\$MYSQL_ROOT_PASSWORD\" --single-transaction --routines --triggers $db" | gzip > "$out"

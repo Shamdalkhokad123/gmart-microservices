@@ -20,6 +20,7 @@ x-service: &service
     CATALOG_SERVICE_URL: http://catalog-service:8082/api
     ORDER_SERVICE_URL: http://order-service:8083/api
     PAYMENT_SERVICE_URL: http://payment-service:8084/api
+    STORE_SERVICE_URL: http://store-service:8085/api
 
 services:
   mysql:
@@ -32,6 +33,7 @@ services:
       CATALOG_DB_PASSWORD: ${CATALOG_DB_PASSWORD:?}
       ORDER_DB_PASSWORD: ${ORDER_DB_PASSWORD:?}
       PAYMENT_DB_PASSWORD: ${PAYMENT_DB_PASSWORD:?}
+      STORE_DB_PASSWORD: ${STORE_DB_PASSWORD:?}
     volumes:
       - mysql-data:/var/lib/mysql
       - ./deploy/mysql-init:/docker-entrypoint-initdb.d:ro
@@ -126,6 +128,17 @@ services:
     depends_on: { mysql: { condition: service_healthy } }
     healthcheck: *health
 
+  store-service:
+    <<: *service
+    build: { context: ., args: { SERVICE: store-service } }
+    environment:
+      <<: *common-env
+      PORT: 8085
+      DB_USER: gmart_store
+      DB_PASSWORD: ${STORE_DB_PASSWORD}
+    depends_on: { mysql: { condition: service_healthy } }
+    healthcheck: *health
+
   api-gateway:
     build: { context: ., args: { SERVICE: api-gateway } }
     restart: unless-stopped
@@ -135,6 +148,7 @@ services:
       CATALOG_SERVICE_URI: http://catalog-service:8082
       ORDER_SERVICE_URI: http://order-service:8083
       PAYMENT_SERVICE_URI: http://payment-service:8084
+      STORE_SERVICE_URI: http://store-service:8085
     ports:
       - "127.0.0.1:${GATEWAY_PORT:-8080}:8080"   # nginx on the same host proxies /api/** here
     depends_on:
@@ -142,6 +156,7 @@ services:
       catalog-service: { condition: service_healthy }
       order-service: { condition: service_healthy }
       payment-service: { condition: service_healthy }
+      store-service: { condition: service_healthy }
 
 networks:
   gmart:

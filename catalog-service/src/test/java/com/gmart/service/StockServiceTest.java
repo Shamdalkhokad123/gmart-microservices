@@ -24,12 +24,14 @@ class StockServiceTest {
 
     @Autowired StockService stock;
     @Autowired ProductRepository products;
+    @Autowired com.gmart.repository.CatalogStoreRepository stores;
 
     private Product apples;
     private Product milk;
 
     @BeforeEach
     void setUp() {
+        stores.save(new com.gmart.entity.CatalogStore(1, "Test store", true));
         apples = products.save(product("Apples", 5));
         milk = products.save(product("Milk", 2));
     }
@@ -37,6 +39,7 @@ class StockServiceTest {
     private static Product product(String name, int stock) {
         Product p = new Product(null, name, "", "Test", new BigDecimal("10.00"), null);
         p.setStock(stock);
+        p.setStoreId(1);
         return p;
     }
 

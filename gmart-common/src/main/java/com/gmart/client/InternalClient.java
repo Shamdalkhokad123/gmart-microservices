@@ -56,6 +56,12 @@ public class InternalClient {
                 .body(body).retrieve().body(JsonNode.class), type));
     }
 
+    /** PUT returning the "data" field of the ApiResponse. */
+    public <T> T put(String uri, Object body, ParameterizedTypeReference<T> type, Object... uriVars) {
+        return call(() -> unwrap(http.put().uri(uri, uriVars).contentType(MediaType.APPLICATION_JSON)
+                .body(body).retrieve().body(JsonNode.class), type));
+    }
+
     private <T> T unwrap(JsonNode envelope, ParameterizedTypeReference<T> type) {
         if (envelope == null || envelope.path("data").isMissingNode() || envelope.path("data").isNull()) {
             return null;

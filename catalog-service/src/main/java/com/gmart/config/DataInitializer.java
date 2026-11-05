@@ -2,6 +2,8 @@ package com.gmart.config;
 
 import com.gmart.entity.Category;
 import com.gmart.entity.Product;
+import com.gmart.entity.CatalogStore;
+import com.gmart.repository.CatalogStoreRepository;
 import com.gmart.repository.CategoryRepository;
 import com.gmart.repository.ProductRepository;
 import org.springframework.boot.CommandLineRunner;
@@ -17,14 +19,26 @@ public class DataInitializer implements CommandLineRunner {
 
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
+    private final CatalogStoreRepository storeRepository;
 
-    public DataInitializer(CategoryRepository categoryRepository, ProductRepository productRepository) {
+    public DataInitializer(CategoryRepository categoryRepository, ProductRepository productRepository,
+                           CatalogStoreRepository storeRepository) {
         this.categoryRepository = categoryRepository;
         this.productRepository = productRepository;
+        this.storeRepository = storeRepository;
+    }
+
+    /** Demo stores, same ids as store-service's seed: 1 groceries, 2 snacks/drinks/frozen. */
+    private void seedStores() {
+        if (storeRepository.count() == 0) {
+            storeRepository.save(new CatalogStore(1, "GMart Indiranagar", true));
+            storeRepository.save(new CatalogStore(2, "Fresh Basket Koramangala", true));
+        }
     }
 
     @Override
     public void run(String... args) {
+        seedStores();
         seedCategories();
         seedProducts();
     }
@@ -55,7 +69,7 @@ public class DataInitializer implements CommandLineRunner {
             String fv = "Fruits & Vegetables", dbe = "Dairy, Bread & Eggs", dj = "Drinks & Juices", sm = "Snacks & Munchies",
                    si = "Sweets & Ice Creams", ard = "Atta, Rice & Dal", mo = "Masala, Oil & More", fs = "Fish & Seafood",
                    inf = "Instant & Frozen Food", hp = "Home & Personal Care";
-            productRepository.saveAll(List.of(
+            List<Product> all = List.of(
                 // Fruits & Vegetables
                 new Product("Shimla Apple", "Crisp, juicy apples from Himachal orchards.", fv, 149, 180f, "4 pcs (approx. 600 g)", 40, img("1560806887-1e4cd0b6cbd6")),
                 new Product("Robusta Banana", "Naturally ripened, rich in potassium.", fv, 49, 60f, "6 pcs", 60, img("1571771894821-ce9b6c11b08e")),
@@ -116,7 +130,11 @@ public class DataInitializer implements CommandLineRunner {
                 new Product("Handmade Lavender Soap", "Cold-process soap with lavender oil.", hp, 199, 249f, "Pack of 3", 25, img("1600857544200-b2f666a9a2ec")),
                 new Product("Toilet Tissue Rolls", "Soft 3-ply rolls.", hp, 149, 180f, "4 rolls", 40, img("1584556812952-905ffd0c611a")),
                 new Product("Front Load Liquid Detergent", "Tough on stains, gentle on clothes.", hp, 199, 260f, "1 L", 30, img("1610557892470-55d9e80c0bce"))
-            ));
+            );
+            // Store 2 sells drinks, snacks, sweets and frozen food; store 1 everything else
+            java.util.Set<String> store2 = java.util.Set.of(dj, sm, si, inf);
+            all.forEach(p -> p.setStoreId(store2.contains(p.getProductCategory()) ? 2 : 1));
+            productRepository.saveAll(all);
         }
     }
 

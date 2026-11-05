@@ -22,6 +22,10 @@ spring:
           uri: ${ORDER_SERVICE_URI:http://localhost:8083}
           predicates:
             - Path=/api/cart/**,/api/cart,/api/coupons/**,/api/coupons,/api/orders/**
+        - id: store-service
+          uri: ${STORE_SERVICE_URI:http://localhost:8085}
+          predicates:
+            - Path=/api/stores/**,/api/stores
         - id: payment-service
           uri: ${PAYMENT_SERVICE_URI:http://localhost:8084}
           predicates:

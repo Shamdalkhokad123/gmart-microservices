@@ -18,7 +18,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/internal/**", "/error", "/h2-console/**", "/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/products/manage").authenticated()
                         .requestMatchers(HttpMethod.GET, "/products/**", "/categories/**").permitAll()
+                        // categories are platform-wide: super admin only
+                        .requestMatchers("/categories/**").hasAuthority("ROLE_SUPER_ADMIN")
                         // creating, editing and deleting products/categories
                         .anyRequest().hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_STORE_OWNER", "ROLE_STAFF"))
                 .build();
