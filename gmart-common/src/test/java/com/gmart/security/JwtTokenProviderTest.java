@@ -12,6 +12,7 @@ class JwtTokenProviderTest {
         JwtTokenProvider p = new JwtTokenProvider();
         ReflectionTestUtils.setField(p, "jwtSecret", secret);
         ReflectionTestUtils.setField(p, "jwtExpirationMs", expiryMs);
+        ReflectionTestUtils.setField(p, "adminJwtExpirationMs", expiryMs);
         return p;
     }
 

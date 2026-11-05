@@ -52,6 +52,28 @@ public class AuthController {
         }
     }
 
+    public record PasswordChange(String currentPassword, String newPassword) {
+    }
+
+    /** Change your own password (logged in; wrong current passwords count towards the lockout). */
+    @PostMapping("/change-password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(org.springframework.security.core.Authentication auth,
+                                                            @RequestBody PasswordChange body) {
+        String key = "login-fail:" + auth.getName().toLowerCase(java.util.Locale.ROOT);
+        if (limiter.count(key, LOGIN_WINDOW) >= MAX_FAILURES_PER_ACCOUNT) {
+            return ResponseEntity.status(429).body(ApiResponse.error("Too many failed attempts. Please try again in 15 minutes."));
+        }
+        try {
+            authService.changePassword(auth.getName(), body.currentPassword(), body.newPassword());
+            return ResponseEntity.ok(ApiResponse.success("Password changed"));
+        } catch (com.gmart.web.BusinessException e) {
+            if (e.getMessage().startsWith("Your current password")) {
+                limiter.record(key);
+            }
+            return ResponseEntity.status(e.getStatus()).body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<User>> register(@Valid @RequestBody RegisterRequest request,
                                                       jakarta.servlet.http.HttpServletRequest http) {

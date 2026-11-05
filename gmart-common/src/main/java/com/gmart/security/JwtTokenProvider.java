@@ -23,8 +23,15 @@ public class JwtTokenProvider {
     @Value("${gmart.app.jwtSecret}")
     private String jwtSecret;
 
-    @Value("${gmart.app.jwtExpirationMs:86400000}")
+    @Value("${gmart.app.jwtExpirationMs:43200000}")
     private long jwtExpirationMs;
+
+    /**
+     * Admin sessions are shorter (default 2 h). Tokens can't be revoked, so this bounds how
+     * long someone whose admin rights were removed keeps access.
+     */
+    @Value("${gmart.app.adminJwtExpirationMs:7200000}")
+    private long adminJwtExpirationMs;
 
     private Key signingKey() {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
@@ -36,7 +43,7 @@ public class JwtTokenProvider {
                 .setSubject(username)
                 .claim("role", role)
                 .setIssuedAt(now)
-                .setExpiration(new Date(now.getTime() + jwtExpirationMs))
+                .setExpiration(new Date(now.getTime() + ("ROLE_ADMIN".equals(role) ? adminJwtExpirationMs : jwtExpirationMs)))
                 .signWith(signingKey(), SignatureAlgorithm.HS256)
                 .compact();
     }

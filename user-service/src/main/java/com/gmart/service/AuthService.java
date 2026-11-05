@@ -103,6 +103,30 @@ public class AuthService {
         return userRepository.save(user);
     }
 
+    /** New passwords: at least this long (admins: StaffService.ADMIN_PASSWORD_MIN). */
+    public static final int PASSWORD_MIN = 8;
+
+    /**
+     * Change your own password. The current password must be given, so a stolen
+     * session token alone can't take over the account.
+     */
+    public void changePassword(String username, String currentPassword, String newPassword) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new BusinessException("Account not found", 404));
+        if (currentPassword == null || !passwordMatches(user, currentPassword)) {
+            throw new BusinessException("Your current password is not correct");
+        }
+        int min = "ROLE_ADMIN".equals(user.getRole()) ? StaffService.ADMIN_PASSWORD_MIN : PASSWORD_MIN;
+        if (newPassword == null || newPassword.length() < min) {
+            throw new BusinessException("The new password must be at least " + min + " characters");
+        }
+        if (newPassword.equals(currentPassword)) {
+            throw new BusinessException("The new password must be different from the current one");
+        }
+        user.setPassWord(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
     public User getCurrentUser(String username) {
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new BusinessException("User not found: " + username));
