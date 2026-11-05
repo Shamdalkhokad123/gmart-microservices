@@ -27,7 +27,14 @@ public class User {
     private String address;
 
     @Column(nullable = false)
-    private String role; // "ROLE_CUSTOMER" or "ROLE_ADMIN"
+    private String role; // see com.gmart.security.Roles
+
+    /** Store this owner/staff member works for (store-service id); null for customers and super admins. */
+    @Column(name = "store_id")
+    private Integer storeId;
+
+    public Integer getStoreId() { return storeId; }
+    public void setStoreId(Integer storeId) { this.storeId = storeId; }
 
     public User() {
     }

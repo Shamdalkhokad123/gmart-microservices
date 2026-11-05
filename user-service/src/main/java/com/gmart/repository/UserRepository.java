@@ -22,4 +22,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     long countByRole(String role);
 
     java.util.List<User> findByRoleOrderByUsernameAsc(String role);
+
+    /** Owner first (ROLE_STORE_OWNER sorts after ROLE_STAFF), then staff. */
+    java.util.List<User> findByStoreIdOrderByRoleDescUsernameAsc(Integer storeId);
 }

@@ -10,7 +10,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
- * Creates the first admin account in a fresh production database from environment
+ * Creates the first super admin (platform owner) account in a fresh production database from environment
  * variables (ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD). It does nothing once any
  * admin exists, so the variables can be removed after the first start.
  */
@@ -39,7 +39,7 @@ public class AdminBootstrap implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (userRepository.existsByRole("ROLE_ADMIN")) {
+        if (userRepository.existsByRole(com.gmart.security.Roles.SUPER_ADMIN)) {
             return;
         }
         if (username.isEmpty() || email.isEmpty() || password.isEmpty()) {
@@ -57,7 +57,7 @@ public class AdminBootstrap implements CommandLineRunner {
         admin.setEmail(email);
         admin.setFullName("Administrator");
         admin.setPassWord(passwordEncoder.encode(password));
-        admin.setRole("ROLE_ADMIN");
+        admin.setRole(com.gmart.security.Roles.SUPER_ADMIN);
         userRepository.save(admin);
         log.info("Created admin account '{}'. You can now remove ADMIN_PASSWORD from the environment.", username);
     }

@@ -1,33 +1,37 @@
 package com.gmart.config;
 
 import com.gmart.entity.Address;
-import com.gmart.entity.Employee;
 import com.gmart.entity.User;
 import com.gmart.repository.AddressRepository;
-import com.gmart.repository.EmployeeRepository;
 import com.gmart.repository.UserRepository;
+import com.gmart.security.Roles;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import java.util.Arrays;
 import java.util.List;
 
-/** Seeds demo users, employees and addresses on first start. Development only: enabled by gmart.seed.demo-data=true (the dev profile). */
+/**
+ * Demo accounts for local development (gmart.seed.demo-data=true, the dev profile).
+ * Store ids 1 and 2 match the demo stores seeded by store-service.
+ *
+ *   admin / 12345678            super admin (platform)
+ *   store_owner / password123   owner of store 1 (GMart Indiranagar)
+ *   store_staff / password123   staff of store 1
+ *   fresh_owner / password123   owner of store 2 (Fresh Basket Koramangala)
+ *   john_doe / password123      customer
+ */
 @Component
 @ConditionalOnProperty(name = "gmart.seed.demo-data", havingValue = "true")
 public class DataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
-    private final EmployeeRepository employeeRepository;
     private final AddressRepository addressRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public DataInitializer(UserRepository userRepository, EmployeeRepository employeeRepository,
-                           AddressRepository addressRepository, PasswordEncoder passwordEncoder) {
+    public DataInitializer(UserRepository userRepository, AddressRepository addressRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
-        this.employeeRepository = employeeRepository;
         this.addressRepository = addressRepository;
         this.passwordEncoder = passwordEncoder;
     }
@@ -35,49 +39,31 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) {
         seedUsers();
-        seedEmployees();
         seedAddresses();
     }
 
     private void seedUsers() {
-        if (userRepository.count() == 0) {
-            // Admin user (matches legacy login 1111 / 12345678)
-            User admin = new User();
-            admin.setUsername("admin");
-            admin.setFullName("Super Administrator");
-            admin.setEmail("admin@gmart.com");
-            admin.setMobileNo(9876543210L);
-            admin.setPassWord(passwordEncoder.encode("12345678"));
-            admin.setAddress("GMart Corporate Tower, 5th Floor, Silicon Valley");
-            admin.setRole("ROLE_ADMIN");
-            userRepository.save(admin);
-
-            // Customer user
-            User customer = new User();
-            customer.setUsername("john_doe");
-            customer.setFullName("John Doe");
-            customer.setEmail("john.doe@example.com");
-            customer.setMobileNo(9123456780L);
-            customer.setPassWord(passwordEncoder.encode("password123"));
-            customer.setAddress("742 Evergreen Terrace, Springfield, OR 97477");
-            customer.setRole("ROLE_CUSTOMER");
-            userRepository.save(customer);
-
-            System.out.println("Default Admin: username 'admin' (or '1111'), password '12345678'");
-            System.out.println("Default Customer: username 'john_doe', password 'password123'");
+        if (userRepository.count() > 0) {
+            return;
         }
+        user("admin", "Super Administrator", "admin@gmart.com", 9876543210L, "12345678", Roles.SUPER_ADMIN, null);
+        user("store_owner", "Ravi Sharma", "ravi@gmart-indiranagar.example", 9845000001L, "password123", Roles.STORE_OWNER, 1);
+        user("store_staff", "Meena Rao", "meena@gmart-indiranagar.example", 9845000002L, "password123", Roles.STAFF, 1);
+        user("fresh_owner", "Anita Kulkarni", "anita@freshbasket.example", 9845000003L, "password123", Roles.STORE_OWNER, 2);
+        user("john_doe", "John Doe", "john.doe@example.com", 9123456780L, "password123", Roles.CUSTOMER, null);
+        System.out.println("Demo logins: admin/12345678 (super admin), store_owner, store_staff, fresh_owner, john_doe (password123)");
     }
 
-    private void seedEmployees() {
-        if (employeeRepository.count() == 0) {
-            List<Employee> employees = Arrays.asList(
-                    new Employee(null, "Robert", "Langdon", 9820011223L, "robert.l@gmart.com", "empPass1", "Floor 2, Inventory Hub"),
-                    new Employee(null, "Sarah", "Connor", 9820022334L, "sarah.c@gmart.com", "empPass2", "Customer Relations Desk"),
-                    new Employee(null, "David", "Miller", 9820033445L, "david.m@gmart.com", "empPass3", "Logistics & Dispatch Division")
-            );
-            employees.forEach(e -> e.setPassWord(passwordEncoder.encode(e.getPassWord())));
-            employeeRepository.saveAll(employees);
-        }
+    private void user(String username, String fullName, String email, long mobile, String password, String role, Integer storeId) {
+        User u = new User();
+        u.setUsername(username);
+        u.setFullName(fullName);
+        u.setEmail(email);
+        u.setMobileNo(mobile);
+        u.setPassWord(passwordEncoder.encode(password));
+        u.setRole(role);
+        u.setStoreId(storeId);
+        userRepository.save(u);
     }
 
     private void seedAddresses() {

@@ -27,7 +27,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/auth/login", "/auth/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/contact").permitAll()
-                        .requestMatchers("/employees/**", "/contact/all", "/users/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/contact/all", "/users/super-admins/**", "/users/lookup").hasAuthority("ROLE_SUPER_ADMIN")
+                        .requestMatchers("/users/store-staff/**").hasAuthority("ROLE_STORE_OWNER")
                         .anyRequest().authenticated())
                 .build();
     }

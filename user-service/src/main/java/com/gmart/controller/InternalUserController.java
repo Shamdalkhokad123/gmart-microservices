@@ -4,6 +4,8 @@ import com.gmart.dto.ApiResponse;
 import com.gmart.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -17,9 +19,21 @@ import java.util.Map;
 public class InternalUserController {
 
     private final UserRepository userRepository;
+    private final com.gmart.service.TeamService team;
 
-    public InternalUserController(UserRepository userRepository) {
+    public InternalUserController(UserRepository userRepository, com.gmart.service.TeamService team) {
         this.userRepository = userRepository;
+        this.team = team;
+    }
+
+    public record StoreRole(Integer storeId) {
+    }
+
+    /** store-service: the approved applicant becomes the owner of the store. */
+    @PutMapping("/{username}/store-owner")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> makeOwner(@PathVariable String username, @RequestBody StoreRole body) {
+        com.gmart.entity.User u = team.makeOwner(username, body.storeId());
+        return ResponseEntity.ok(ApiResponse.success("Owner set", Map.of("username", u.getUsername(), "storeId", u.getStoreId())));
     }
 
     @GetMapping("/{username}")

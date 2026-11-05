@@ -30,7 +30,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Claims claims = tokenProvider.parse(header.substring(7));
             if (claims != null && claims.getSubject() != null) {
                 String role = claims.get("role", String.class);
-                var auth = new UsernamePasswordAuthenticationToken(claims.getSubject(), null,
+                Integer storeId = claims.get("storeId", Integer.class);
+                // principal is a CurrentUser: auth.getName() is still the username
+                var auth = new UsernamePasswordAuthenticationToken(new CurrentUser(claims.getSubject(), role, storeId), null,
                         role == null ? List.of() : List.of(new SimpleGrantedAuthority(role)));
                 SecurityContextHolder.getContext().setAuthentication(auth);
             }

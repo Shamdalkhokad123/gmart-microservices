@@ -54,8 +54,10 @@ public class AuthService {
             throw new BusinessException("Invalid Login ID or Password");
         }
 
-        String token = jwtTokenProvider.generateToken(user.getUsername(), user.getRole());
-        return new AuthResponse(token, user.getCustId(), user.getUsername(), user.getFullName(), user.getEmail(), user.getRole(), user.getAddress());
+        String token = jwtTokenProvider.generateToken(user.getUsername(), user.getRole(), user.getStoreId());
+        AuthResponse response = new AuthResponse(token, user.getCustId(), user.getUsername(), user.getFullName(), user.getEmail(), user.getRole(), user.getAddress());
+        response.setStoreId(user.getStoreId());
+        return response;
     }
 
     /**
@@ -98,13 +100,14 @@ public class AuthService {
         user.setMobileNo(request.getMobileNo());
         user.setPassWord(passwordEncoder.encode(request.getPassWord()));
         user.setAddress(request.getAddress());
-        user.setRole("ROLE_CUSTOMER");
+        user.setRole(com.gmart.security.Roles.CUSTOMER);
 
         return userRepository.save(user);
     }
 
-    /** New passwords: at least this long (admins: StaffService.ADMIN_PASSWORD_MIN). */
+    /** New passwords: customers at least 8 characters; super admins, owners and staff 12. */
     public static final int PASSWORD_MIN = 8;
+    public static final int ELEVATED_PASSWORD_MIN = 12;
 
     /**
      * Change your own password. The current password must be given, so a stolen
@@ -116,7 +119,7 @@ public class AuthService {
         if (currentPassword == null || !passwordMatches(user, currentPassword)) {
             throw new BusinessException("Your current password is not correct");
         }
-        int min = "ROLE_ADMIN".equals(user.getRole()) ? StaffService.ADMIN_PASSWORD_MIN : PASSWORD_MIN;
+        int min = com.gmart.security.Roles.ELEVATED.contains(user.getRole()) ? ELEVATED_PASSWORD_MIN : PASSWORD_MIN;
         if (newPassword == null || newPassword.length() < min) {
             throw new BusinessException("The new password must be at least " + min + " characters");
         }

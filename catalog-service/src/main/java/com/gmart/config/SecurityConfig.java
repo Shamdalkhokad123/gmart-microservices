@@ -20,7 +20,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/products/**", "/categories/**").permitAll()
                         // creating, editing and deleting products/categories
-                        .anyRequest().hasAuthority("ROLE_ADMIN"))
+                        .anyRequest().hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_STORE_OWNER", "ROLE_STAFF"))
                 .build();
     }
 }

@@ -27,8 +27,8 @@ public class JwtTokenProvider {
     private long jwtExpirationMs;
 
     /**
-     * Admin sessions are shorter (default 2 h). Tokens can't be revoked, so this bounds how
-     * long someone whose admin rights were removed keeps access.
+     * Back-office sessions (super admin, store owner, staff) are shorter (default 2 h). Tokens
+     * can't be revoked, so this bounds how long someone whose access was removed keeps it.
      */
     @Value("${gmart.app.adminJwtExpirationMs:7200000}")
     private long adminJwtExpirationMs;
@@ -38,12 +38,18 @@ public class JwtTokenProvider {
     }
 
     public String generateToken(String username, String role) {
+        return generateToken(username, role, null);
+    }
+
+    /** {@code storeId} is set for store owners and staff (the store they work for). */
+    public String generateToken(String username, String role, Integer storeId) {
         Date now = new Date();
         return Jwts.builder()
                 .setSubject(username)
                 .claim("role", role)
+                .claim("storeId", storeId)
                 .setIssuedAt(now)
-                .setExpiration(new Date(now.getTime() + ("ROLE_ADMIN".equals(role) ? adminJwtExpirationMs : jwtExpirationMs)))
+                .setExpiration(new Date(now.getTime() + (Roles.ELEVATED.contains(role) ? adminJwtExpirationMs : jwtExpirationMs)))
                 .signWith(signingKey(), SignatureAlgorithm.HS256)
                 .compact();
     }

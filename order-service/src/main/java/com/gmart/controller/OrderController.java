@@ -32,7 +32,7 @@ public class OrderController {
 
     /** Store staff: confirm, pack, send out (with rider) and mark delivered. */
     @PutMapping("/{orderId}/status")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize(com.gmart.security.Roles.CAN_MANAGE_STORE)
     public ResponseEntity<ApiResponse<OrderDetail>> updateStatus(@PathVariable Integer orderId, @RequestBody StatusUpdate update) {
         if (update == null || update.status() == null) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Status is required"));
@@ -89,12 +89,12 @@ public class OrderController {
     }
 
     @GetMapping("/all")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<List<OrderDetail>>> getAllOrders() {
         return ResponseEntity.ok(ApiResponse.success("All orders retrieved", orderService.getAllOrders()));
     }
 
     private static boolean isAdmin(Authentication auth) {
-        return auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        return auth.getAuthorities().stream().anyMatch(a -> "ROLE_SUPER_ADMIN".equals(a.getAuthority()));
     }
 }

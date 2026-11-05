@@ -16,7 +16,7 @@ import java.util.Map;
 /** Admin view of online payments, with a manual "check with Razorpay now". */
 @RestController
 @RequestMapping("/payments/admin")
-@PreAuthorize("hasAuthority('ROLE_ADMIN')")
+@PreAuthorize("hasAuthority('ROLE_SUPER_ADMIN')")
 public class AdminPaymentController {
 
     private final PaymentTransactionRepository repository;
