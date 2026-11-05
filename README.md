@@ -93,3 +93,23 @@ The full launch checklist (Razorpay activation, hosting, legal pages) is
 | `*_SERVICE_URL` / `*_SERVICE_URI` | your internal hostnames | `http://localhost:808x` | services / gateway |
 
 Razorpay webhook URL (events `payment.captured`, `order.paid`): `https://<public-host>/api/payments/razorpay/webhook`.
+
+## Production with Docker
+
+```bash
+cp .env.example .env    # fill in every value (openssl rand -hex 32 for secrets)
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+This starts MySQL (one database and one user per service, created by `deploy/mysql-init`),
+Redis, Kafka and the five services. Flyway creates the tables on first start. Only the gateway
+is published, on `127.0.0.1:8080`, for nginx on the same host. Back up with `deploy/backup-mysql.sh`.
+The full checklist is in GO-LIVE.md (DemoGmart repo).
+
+## Tests
+
+`mvn verify` runs the unit and integration tests (in-memory H2, no Docker needed). They cover
+pricing and coupons, order status rules, stock reservation and idempotent release, Razorpay
+signatures, payment completion, refunds and reconciliation, login hashing and lockout, and the
+production secrets check. GitHub Actions (`.github/workflows/ci.yml`) runs them on every push and
+builds the Docker images.

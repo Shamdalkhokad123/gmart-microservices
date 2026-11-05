@@ -62,6 +62,10 @@ public class OrderStatusService {
         if (NEXT.get(current) != next) {
             throw new BusinessException("Order #" + orderId + " is " + current + " and cannot move to " + next);
         }
+        // Validate everything before changing the order
+        if (next == OrderStatus.OUT_FOR_DELIVERY && (isBlank(riderName) || isBlank(riderPhone))) {
+            throw new BusinessException("Delivery partner name and phone are required");
+        }
 
         Date now = new Date();
         order.setStatus(next);
@@ -69,9 +73,6 @@ public class OrderStatusService {
             case CONFIRMED -> order.setConfirmedAt(now);
             case PACKED -> order.setPackedAt(now);
             case OUT_FOR_DELIVERY -> {
-                if (isBlank(riderName) || isBlank(riderPhone)) {
-                    throw new BusinessException("Delivery partner name and phone are required");
-                }
                 order.setDeliveryPartnerName(riderName.trim());
                 order.setDeliveryPartnerPhone(riderPhone.trim());
                 order.setOutForDeliveryAt(now);
