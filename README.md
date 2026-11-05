@@ -23,7 +23,24 @@ old single backend: `http://localhost:8080/api`.
 | `user-service` | 8081 | `gmart_user_db` | `/auth`, `/addresses`, `/employees`, `/contact` |
 | `catalog-service` | 8082 | `gmart_catalog_db` | `/products`, `/categories`, stock reserve/release |
 | `order-service` | 8083 | `gmart_order_db` | `/cart`, `/coupons`, `/orders`, simulated store and rider |
-| `payment-service` | 8084 | `gmart_payment_db` | `/payments/razorpay/**` |
+| `payment-service` | 8084 | `gmart_payment_db` | `/payments/razorpay/**` (Razorpay Route transfers to stores) |
+| `store-service` | 8085 | `gmart_store_db` | `/stores/**`: applications, approval, store settings, commission, payout account |
+
+## Marketplace roles
+
+| Role | Who | Can |
+|---|---|---|
+| Super admin | runs GMart | approve/reject/suspend stores, commission and Razorpay linked account per store, categories, all orders and payments, other super admins |
+| Store owner | runs one store | the store's products, orders (incl. cancel/refund), staff, settings (open/closed), earnings |
+| Staff | works for one store | the store's products and stock, process orders (confirm → delivered) |
+| Customer | shops | buy from one store per cart; apply to open a store ("Sell on GMart") |
+
+A customer applies → the super admin approves → the applicant becomes the store owner at their
+next sign-in. The JWT carries `role` and `storeId`; every service checks store ownership itself
+(`CurrentUser` in gmart-common).
+
+Demo logins (dev profile): `admin`/`12345678` (super admin), `store_owner`, `store_staff`,
+`fresh_owner`, `john_doe` (all `password123`).
 
 ## How the services talk
 

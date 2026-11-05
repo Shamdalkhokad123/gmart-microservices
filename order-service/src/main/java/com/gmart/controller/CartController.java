@@ -37,6 +37,9 @@ public class CartController {
             boolean replaceCart = Boolean.parseBoolean(String.valueOf(payload.getOrDefault("replaceCart", "false")));
             CartItem item = cartService.addToCart(authentication.getName(), productId, quantity, replaceCart);
             return ResponseEntity.ok(ApiResponse.success("Added to cart", item));
+        } catch (com.gmart.web.BusinessException e) {
+            // 409 = cart has another store's items; the app then asks "start a new cart?"
+            return ResponseEntity.status(e.getStatus() == 409 ? 409 : 400).body(ApiResponse.error(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(Errors.userMessage(e)));
         }
